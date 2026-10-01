@@ -118,6 +118,20 @@ class TestBookings(unittest.TestCase):
     def _future_date(self, days=5):
         return (datetime.date.today() + datetime.timedelta(days=days)).isoformat()
 
+    def _create_booking(self, token, days=5, qty=1, dest_id=None, name='Book Test', email='booktest@example.com'):
+        if dest_id is None:
+            dests = client.get('/api/destinations').get_json()
+            dest_id = dests[0]['id']
+        r = client.post('/api/bookings', json={
+            'destination_id': dest_id, 'visit_date': self._future_date(days),
+            'qty': qty, 'name': name, 'email': email
+        }, headers={'Authorization': f'Bearer {token}'})
+        return r
+
+    def _pay(self, code, token, method='qris'):
+        return client.post(f'/api/bookings/{code}/pay', json={'method': method},
+                           headers={'Authorization': f'Bearer {token}'})
+
     @patch('mailer.send_email_background')
     def test_01_booking_without_token(self, _):
         dests = client.get('/api/destinations').get_json()
@@ -139,22 +153,25 @@ class TestBookings(unittest.TestCase):
         self.assertEqual(r.status_code, 201)
         data = r.get_json()
         self.assertIn('code', data)
-        self.assertTrue(data.get('email_sent'))
+        self.assertEqual(data['status'], 'PENDING')
+        self.assertTrue(data.get('expires_at'))
+        # Email konfirmasi TIDAK dikirim saat create
+        self.assertEqual(mock_send.call_count, 0)
+        # Bayar dulu
+        r2 = self._pay(data['code'], token)
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.get_json()['status'], 'PAID')
+        self.assertTrue(r2.get_json().get('email_sent'))
         self.assertEqual(mock_send.call_count, 1)
         return data['code']
 
     @patch('mailer.send_email_background')
     def test_03_other_user_cannot_refund(self, mock_send):
-        # Owner books
         token = self._get_token()
-        dests = client.get('/api/destinations').get_json()
-        r = client.post('/api/bookings', json={
-            'destination_id': dests[0]['id'], 'visit_date': self._future_date(10),
-            'qty': 1
-        }, headers={'Authorization': f'Bearer {token}'})
+        r = self._create_booking(token, days=10)
         self.assertEqual(r.status_code, 201)
         code = r.get_json()['code']
-        # Other user tries to refund
+        self._pay(code, token)
         token2 = self._get_token2()
         r2 = client.post(f'/api/bookings/{code}/refund', json={},
             headers={'Authorization': f'Bearer {token2}'})
@@ -163,12 +180,9 @@ class TestBookings(unittest.TestCase):
     @patch('mailer.send_email_background')
     def test_04_owner_can_refund(self, mock_send):
         token = self._get_token()
-        dests = client.get('/api/destinations').get_json()
-        r = client.post('/api/bookings', json={
-            'destination_id': dests[0]['id'], 'visit_date': self._future_date(10),
-            'qty': 1
-        }, headers={'Authorization': f'Bearer {token}'})
+        r = self._create_booking(token, days=10)
         code = r.get_json()['code']
+        self._pay(code, token)
         r2 = client.post(f'/api/bookings/{code}/refund', json={'reason': 'test'},
             headers={'Authorization': f'Bearer {token}'})
         self.assertEqual(r2.status_code, 200)
@@ -178,17 +192,14 @@ class TestBookings(unittest.TestCase):
     def test_05_email_error_doesnt_break_booking(self, mock_send):
         mock_send.side_effect = Exception('SMTP error')
         token = self._get_token()
-        dests = client.get('/api/destinations').get_json()
-        r = client.post('/api/bookings', json={
-            'destination_id': dests[0]['id'], 'visit_date': self._future_date(15),
-            'qty': 1
-        }, headers={'Authorization': f'Bearer {token}'})
-        self.assertEqual(r.status_code, 201)
-        self.assertFalse(r.get_json().get('email_sent'))
+        r = self._create_booking(token, days=15)
+        code = r.get_json()['code']
+        r2 = self._pay(code, token)
+        self.assertEqual(r2.status_code, 200)
+        self.assertFalse(r2.get_json().get('email_sent'))
 
     @patch('mailer.send_email_background')
     def test_06_admin_crud_still_works(self, _):
-        # Admin CRUD via X-Admin-Token
         r = client.post('/api/destinations', json={
             'name': 'Admin Test', 'region': 'kota-yogyakarta',
             'price': 5000, 'price_max': 0, 'price_weekend': 0, 'daily_quota': 50,
@@ -200,17 +211,15 @@ class TestBookings(unittest.TestCase):
         self.assertEqual(r.status_code, 204)
 
     def _book_paid(self, token, days=10, qty=1):
-        """Helper: buat booking PAID, return (code, old_visit, unit_price, total)."""
-        dests = client.get('/api/destinations').get_json()
-        d = dests[0]
-        visit = self._future_date(days)
-        r = client.post('/api/bookings', json={
-            'destination_id': d['id'], 'visit_date': visit, 'qty': qty,
-            'name': 'Chg Test', 'email': 'chg@test.com'
-        }, headers={'Authorization': f'Bearer {token}'})
+        """Helper: buat booking PENDING lalu bayar, return (code, old_visit, unit_price, total)."""
+        r = self._create_booking(token, days=days, qty=qty, name='Chg Test', email='chg@test.com')
         assert r.status_code == 201, r.get_json()
         data = r.get_json()
-        return data['code'], visit, data['unit_price'], data['total']
+        code = data['code']
+        r2 = self._pay(code, token)
+        assert r2.status_code == 200, r2.get_json()
+        paid = r2.get_json()
+        return code, paid['visit_date'], paid['unit_price'], paid['total']
 
     @patch('mailer.send_email_background')
     def test_07_change_date_success(self, mock_send):
@@ -222,10 +231,8 @@ class TestBookings(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         data = r.get_json()
         self.assertEqual(data['visit_date'], new_visit)
-        # Harga terkunci
         self.assertEqual(data['unit_price'], up)
         self.assertEqual(data['total'], total)
-        # Email perubahan terkirim
         self.assertTrue(mock_send.called)
 
     @patch('mailer.send_email_background')
@@ -262,7 +269,6 @@ class TestBookings(unittest.TestCase):
 
     @patch('mailer.send_email_background')
     def test_11_change_date_old_visit_today_rejected(self, mock_send):
-        # Booking visit_date = hari ini bisa dibuat, tapi TIDAK bisa diubah
         token = self._get_token('chg5@test.com', 'Chg Five')
         dests = client.get('/api/destinations').get_json()
         today = datetime.date.today().isoformat()
@@ -272,6 +278,8 @@ class TestBookings(unittest.TestCase):
         }, headers={'Authorization': f'Bearer {token}'})
         self.assertEqual(r.status_code, 201)
         code = r.get_json()['code']
+        # Bayar dulu (status PENDING -> PAID)
+        self._pay(code, token)
         # Ubah tanggal: old_visit = hari ini < besok -> 400
         new_visit = self._future_date(3)
         r2 = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
@@ -312,7 +320,6 @@ class TestBookings(unittest.TestCase):
 
     @patch('mailer.send_email_background')
     def test_15_change_date_same_day_tomorrow_boundary(self, mock_send):
-        """Tanggal besok = valid untuk old & new."""
         token = self._get_token('chg10@test.com', 'Chg Ten')
         dests = client.get('/api/destinations').get_json()
         tomorrow = self._future_date(1)
@@ -322,11 +329,134 @@ class TestBookings(unittest.TestCase):
         }, headers={'Authorization': f'Bearer {token}'})
         self.assertEqual(r.status_code, 201)
         code = r.get_json()['code']
+        self._pay(code, token)
         day_after = self._future_date(2)
         r2 = client.put(f'/api/bookings/{code}', json={'visit_date': day_after},
                         headers={'Authorization': f'Bearer {token}'})
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r2.get_json()['visit_date'], day_after)
+
+    # ── FASE 2: Payment flow ──────────────────────────────────────
+
+    @patch('mailer.send_email_background')
+    def test_20_booking_is_pending(self, mock_send):
+        token = self._get_token('pay1@test.com', 'Pay One')
+        r = self._create_booking(token, days=5, name='Pay One', email='pay1@test.com')
+        self.assertEqual(r.status_code, 201)
+        data = r.get_json()
+        self.assertEqual(data['status'], 'PENDING')
+        self.assertTrue(data['expires_at'])
+        self.assertIsNone(data.get('paid_at'))
+
+    @patch('mailer.send_email_background')
+    def test_21_pay_success(self, mock_send):
+        token = self._get_token('pay2@test.com', 'Pay Two')
+        r = self._create_booking(token, days=5, name='Pay Two', email='pay2@test.com')
+        code = r.get_json()['code']
+        r2 = self._pay(code, token, method='gopay')
+        self.assertEqual(r2.status_code, 200)
+        data = r2.get_json()
+        self.assertEqual(data['status'], 'PAID')
+        self.assertEqual(data['payment_method'], 'gopay')
+        self.assertTrue(data.get('paid_at'))
+        self.assertTrue(data.get('email_sent'))
+        self.assertEqual(mock_send.call_count, 1)
+
+    @patch('mailer.send_email_background')
+    def test_22_pay_invalid_method(self, mock_send):
+        token = self._get_token('pay3@test.com', 'Pay Three')
+        r = self._create_booking(token, days=5, name='Pay Three', email='pay3@test.com')
+        code = r.get_json()['code']
+        r2 = self._pay(code, token, method='bitcoin')
+        self.assertEqual(r2.status_code, 400)
+
+    @patch('mailer.send_email_background')
+    def test_23_pay_expired_returns_410(self, mock_send):
+        token = self._get_token('pay4@test.com', 'Pay Four')
+        r = self._create_booking(token, days=5, name='Pay Four', email='pay4@test.com')
+        code = r.get_json()['code']
+        # Set expires_at ke masa lalu langsung di DB
+        import sqlite3 as sq
+        c = sq.connect('wisata.db')
+        past = (datetime.datetime.now() - datetime.timedelta(minutes=1)).isoformat(timespec='seconds')
+        c.execute("UPDATE bookings SET expires_at=? WHERE code=?", (past, code))
+        c.commit(); c.close()
+        r2 = self._pay(code, token)
+        self.assertEqual(r2.status_code, 410)
+        self.assertEqual(r2.get_json()['error'], 'Waktu pembayaran habis')
+        # Status otomatis EXPIRED
+        r3 = client.get(f'/api/bookings/{code}', headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r3.get_json()['status'], 'EXPIRED')
+
+    @patch('mailer.send_email_background')
+    def test_24_expired_not_counted_in_quota(self, mock_send):
+        token = self._get_token('pay5@test.com', 'Pay Five')
+        dests = client.get('/api/destinations').get_json()
+        d = dests[0]
+        visit = self._future_date(8)
+        r = client.post('/api/bookings', json={
+            'destination_id': d['id'], 'visit_date': visit, 'qty': 3,
+            'name': 'Pay Five', 'email': 'pay5@test.com'
+        }, headers={'Authorization': f'Bearer {token}'})
+        code = r.get_json()['code']
+        # Set expired
+        import sqlite3 as sq
+        c = sq.connect('wisata.db')
+        past = (datetime.datetime.now() - datetime.timedelta(minutes=1)).isoformat(timespec='seconds')
+        c.execute("UPDATE bookings SET status='EXPIRED', expires_at=? WHERE code=?", (past, code))
+        c.commit(); c.close()
+        # Kuota penuh kembali (EXPIRED tidak dihitung)
+        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        day = next(x for x in cal if x['date'] == visit)
+        self.assertEqual(day['remaining'], d['daily_quota'])
+
+    @patch('mailer.send_email_background')
+    def test_25_refund_on_pending_409(self, mock_send):
+        token = self._get_token('pay6@test.com', 'Pay Six')
+        r = self._create_booking(token, days=5, name='Pay Six', email='pay6@test.com')
+        code = r.get_json()['code']
+        r2 = client.post(f'/api/bookings/{code}/refund', json={},
+                         headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 409)
+
+    @patch('mailer.send_email_background')
+    def test_26_other_user_cannot_pay(self, mock_send):
+        token = self._get_token('pay7@test.com', 'Pay Seven')
+        r = self._create_booking(token, days=5, name='Pay Seven', email='pay7@test.com')
+        code = r.get_json()['code']
+        token2 = self._get_token('pay8@test.com', 'Pay Eight')
+        r2 = self._pay(code, token2)
+        self.assertEqual(r2.status_code, 403)
+
+    @patch('mailer.send_email_background')
+    def test_27_cancel_pending(self, mock_send):
+        token = self._get_token('pay9@test.com', 'Pay Nine')
+        r = self._create_booking(token, days=5, name='Pay Nine', email='pay9@test.com')
+        code = r.get_json()['code']
+        r2 = client.post(f'/api/bookings/{code}/cancel', json={},
+                         headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.get_json()['status'], 'EXPIRED')
+
+    @patch('mailer.send_email_background')
+    def test_28_cancel_paid_409(self, mock_send):
+        token = self._get_token('pay10@test.com', 'Pay Ten')
+        r = self._create_booking(token, days=5, name='Pay Ten', email='pay10@test.com')
+        code = r.get_json()['code']
+        self._pay(code, token)
+        r2 = client.post(f'/api/bookings/{code}/cancel', json={},
+                         headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 409)
+
+    @patch('mailer.send_email_background')
+    def test_29_pay_all_methods(self, mock_send):
+        token = self._get_token('pay11@test.com', 'Pay Eleven')
+        for m in ['qris', 'va_bca', 'va_bni', 'va_mandiri', 'gopay', 'ovo', 'dana']:
+            r = self._create_booking(token, days=6, name='Pay Eleven', email='pay11@test.com')
+            code = r.get_json()['code']
+            r2 = self._pay(code, token, method=m)
+            self.assertEqual(r2.status_code, 200, f'method {m} failed')
+            self.assertEqual(r2.get_json()['payment_method'], m)
 
 
 if __name__ == '__main__':

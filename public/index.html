@@ -2180,6 +2180,9 @@
             // Detail route
             const detailMatch = hash.match(/^#\/wisata\/(\d+)$/);
             if (detailMatch) { viewDetail(Number(detailMatch[1])); return; }
+            // Payment route
+            const payMatch = hash.match(/^#\/bayar\/([A-Za-z0-9-]+)$/);
+            if (payMatch) { requireLogin(viewPayment)(payMatch[1]); return; }
             const fn = routes[hash];
             if (fn) { await fn(); }
             else { app.innerHTML = `<div class="section"><div class="empty-state"><div class="empty-state-icon">🗺️</div><h3>Halaman tidak ditemukan</h3><p>Kembali ke <a href="#/">beranda</a></p></div></div>`; }
@@ -2623,9 +2626,7 @@
                         name: _detail.bookerName, email: _detail.bookerEmail, phone: _detail.bookerPhone
                     })
                 });
-                // Success screen
-                showSuccessScreen(res);
-                if (res.email_sent) toast(`Konfirmasi dikirim ke ${esc(res.email)}`, 'success');
+                location.hash = `#/bayar/${res.code}`;
             } catch (e) {
                 const r = document.getElementById('bookResult');
                 if (r) r.innerHTML = `<div style="color:var(--danger);margin-top:0.75rem;font-size:0.875rem">⚠ ${esc(e.message)}</div>`;
@@ -2671,6 +2672,186 @@
         }
 
         /* ═══════════════════════════════════════════════════════════
+           PAYMENT VIEW (simulasi)
+        ═══════════════════════════════════════════════════════ */
+        const PAY_METHODS = [
+            { id: 'qris', label: 'QRIS', icon: '📱', hint: 'Scan QR dengan aplikasi apa pun' },
+            { id: 'va_bca', label: 'VA BCA', icon: '🏦', hint: 'Virtual Account BCA' },
+            { id: 'va_bni', label: 'VA BNI', icon: '🏦', hint: 'Virtual Account BNI' },
+            { id: 'va_mandiri', label: 'VA Mandiri', icon: '🏦', hint: 'Virtual Account Mandiri' },
+            { id: 'gopay', label: 'GoPay', icon: '💚', hint: 'Bayar via aplikasi GoPay' },
+            { id: 'ovo', label: 'OVO', icon: '💜', hint: 'Bayar via aplikasi OVO' },
+            { id: 'dana', label: 'Dana', icon: '💙', hint: 'Bayar via aplikasi Dana' },
+        ];
+        let _payTimer = null;
+        let _payState = { booking: null, method: null, expired: false };
+
+        async function viewPayment(code) {
+            clearInterval(_payTimer);
+            app.innerHTML = `<div class="page-wrapper"><div class="section" style="padding-top:calc(var(--nav-h)+2rem);max-width:560px"><div id="payRoot">${skeletonCard()}</div></div></div>`;
+            try {
+                const b = await api(`/bookings/${code}`);
+                _payState = { booking: b, method: null, expired: false };
+                renderPayment();
+            } catch (e) {
+                document.getElementById('payRoot').innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Pesanan tidak ditemukan</h3><button class="btn btn-primary" style="margin-top:1rem" onclick="location.hash='#/pesanan'">Kembali ke Pesanan Saya</button></div>`;
+            }
+        }
+
+        function renderPayment() {
+            const b = _payState.booking;
+            const root = document.getElementById('payRoot');
+            if (!root) return;
+            if (b.status === 'PAID' && !b.pending_visit_date) {
+                clearInterval(_payTimer);
+                showSuccessScreen(b);
+                return;
+            }
+            if (b.status === 'EXPIRED' || _payState.expired) {
+                clearInterval(_payTimer);
+                root.innerHTML = `
+    <div style="text-align:center;padding:2rem 0">
+      <div style="font-size:3rem;margin-bottom:1rem">⏰</div>
+      <h2 class="h2" style="margin-bottom:0.5rem">Waktu Pembayaran Habis</h2>
+      <p style="color:var(--text-3);margin-bottom:1.5rem">Silakan buat pesanan baru.</p>
+      <button class="btn btn-primary" onclick="location.hash='#/pesanan'">Kembali ke Pesanan Saya</button>
+    </div>`;
+                return;
+            }
+            const isDiff = b.status === 'PAID' && b.pending_visit_date;
+            const amount = isDiff ? (b.due_amount || 0) : b.total;
+            const title = isDiff ? 'Bayar Selisih Harga' : 'Pembayaran Simulasi';
+            const methodsHtml = PAY_METHODS.map(m => `
+      <button class="pay-method ${_payState.method === m.id ? 'active' : ''}" data-id="${m.id}" onclick="selectPayMethod('${m.id}')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:0.9rem 0.5rem;border-radius:var(--r-md);border:2px solid ${_payState.method === m.id ? 'var(--clr-primary)' : 'var(--border)'};background:${_payState.method === m.id ? 'rgba(200,98,42,0.08)' : 'var(--bg)'};cursor:pointer;transition:all 0.2s">
+        <span style="font-size:1.4rem">${m.icon}</span>
+        <span style="font-size:0.8rem;font-weight:600">${m.label}</span>
+      </button>`).join('');
+            root.innerHTML = `
+    <div style="background:var(--bg-card);border-radius:var(--r-xl);padding:1.75rem;box-shadow:var(--shadow-md);border:1px solid var(--border)">
+      <div style="background:#fef3c7;color:#92400e;padding:0.5rem 1rem;border-radius:var(--r-full);font-size:0.8rem;font-weight:700;text-align:center;margin-bottom:1.25rem">SIMULASI - tidak ada uang sungguhan</div>
+      <h2 class="h2" style="margin-bottom:1rem">${title}</h2>
+      <div class="price-summary">
+        <div class="price-row"><span>Kode</span><span style="font-family:monospace;font-weight:700">${esc(b.code)}</span></div>
+        <div class="price-row"><span>Wisata</span><span>${esc(b.destination?.name || '')}</span></div>
+        <div class="price-row"><span>Tanggal</span><span>${fmtDate(b.visit_date)}</span></div>
+        ${isDiff ? `
+        <div class="price-row"><span>Tanggal baru</span><span>${fmtDate(b.pending_visit_date)}</span></div>
+        <div class="price-row"><span>Harga lama</span><span>${fmt(b.total)}</span></div>` : `<div class="price-row"><span>Jumlah tiket</span><span>${b.qty}</span></div>`}
+        <div class="price-row"><span>${isDiff ? 'Selisih' : 'Total bayar'}</span><span class="price-total-val">${fmt(amount)}</span></div>
+      </div>
+      <div id="payCountdown" style="text-align:center;font-size:1.1rem;font-weight:700;margin:0.75rem 0;color:var(--clr-primary)"></div>
+      <div class="label" style="margin-bottom:0.5rem">Metode Pembayaran</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.5rem;margin-bottom:1rem">${methodsHtml}</div>
+      <div id="payInstr"></div>
+      <div style="display:flex;gap:0.75rem;margin-top:1.25rem">
+        <button class="btn btn-ghost" style="flex:1" onclick="cancelPayBooking('${esc(b.code)}')">Batalkan</button>
+        <button class="btn btn-primary" style="flex:2" id="btnPayNow" disabled onclick="doPay('${esc(b.code)}')">Saya Sudah Bayar</button>
+      </div>
+    </div>`;
+            startPayCountdown(b.expires_at);
+            if (_payState.method) selectPayMethod(_payState.method);
+        }
+
+        function startPayCountdown(expiresAt) {
+            clearInterval(_payTimer);
+            const el = document.getElementById('payCountdown');
+            if (!el || !expiresAt) return;
+            const tick = () => {
+                const diff = new Date(expiresAt) - new Date();
+                if (diff <= 0) {
+                    clearInterval(_payTimer);
+                    _payState.expired = true;
+                    if (el) el.innerHTML = '<span style="color:var(--danger)">Waktu pembayaran habis</span>';
+                    renderPayment();
+                    return;
+                }
+                const m = Math.floor(diff / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                el.textContent = `⏱ ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            };
+            tick();
+            _payTimer = setInterval(tick, 1000);
+        }
+
+        window.selectPayMethod = function (id) {
+            _payState.method = id;
+            // Update button styles
+            document.querySelectorAll('.pay-method').forEach(btn => {
+                const active = btn.dataset.id === id;
+                btn.style.borderColor = active ? 'var(--clr-primary)' : 'var(--border)';
+                btn.style.background = active ? 'rgba(200,98,42,0.08)' : 'var(--bg)';
+            });
+            const payBtn = document.getElementById('btnPayNow');
+            if (payBtn) payBtn.disabled = false;
+            // Render instructions
+            const instr = document.getElementById('payInstr');
+            if (!instr) return;
+            const b = _payState.booking;
+            const amount = (b.status === 'PAID' && b.pending_visit_date) ? (b.due_amount || 0) : b.total;
+            const method = PAY_METHODS.find(m => m.id === id);
+            if (!method) { instr.innerHTML = ''; return; }
+            let body = '';
+            if (id === 'qris') {
+                const rnd = Math.random().toString(36).slice(2, 10).toUpperCase();
+                body = `
+      <div style="background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-md);padding:1.25rem;text-align:center;margin-bottom:0.75rem">
+        <div style="width:140px;height:140px;margin:0 auto 0.75rem;background:#fff;border:2px solid var(--text);border-radius:8px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr);gap:2px;padding:8px">
+          ${Array.from({length:49},(_,i)=>`<div style="background:${Math.random()>0.45?'#1a1612':'#fff'};border-radius:1px"></div>`).join('')}
+        </div>
+        <div style="font-family:monospace;font-size:0.85rem;color:var(--text-2)">QR Code SIMULASI ${rnd}</div>
+      </div>
+      <div style="font-size:0.875rem;color:var(--text-2);margin-bottom:0.5rem">Buka aplikasi pembayaran → Scan QR → Bayar <strong>${fmt(amount)}</strong></div>`;
+            } else if (id.startsWith('va_')) {
+                let va = '';
+                for (let i = 0; i < 16; i++) va += Math.floor(Math.random() * 10);
+                body = `
+      <div style="background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-md);padding:1.25rem;text-align:center;margin-bottom:0.75rem">
+        <div style="font-size:0.8rem;color:var(--text-3);margin-bottom:0.25rem">Nomor Virtual Account</div>
+        <div style="font-family:monospace;font-size:1.3rem;font-weight:700;letter-spacing:0.05em;color:var(--clr-primary)">${va}</div>
+      </div>
+      <div style="font-size:0.875rem;color:var(--text-2);margin-bottom:0.5rem">Buka aplikasi ${method.label.replace('VA ','')} → Transfer/Virtual Account → Masukkan nomor di atas → Bayar <strong>${fmt(amount)}</strong></div>`;
+            } else {
+                body = `
+      <div style="background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-md);padding:1.25rem;text-align:center;margin-bottom:0.75rem">
+        <div style="font-size:2rem;margin-bottom:0.25rem">${method.icon}</div>
+        <div style="font-weight:700">${method.label}</div>
+      </div>
+      <div style="font-size:0.875rem;color:var(--text-2);margin-bottom:0.5rem">Buka aplikasi ${method.label} → Bayar/Transfer → Bayar <strong>${fmt(amount)}</strong> ke Wisata Jogja (SIMULASI)</div>`;
+            }
+            instr.innerHTML = body;
+        };
+
+        window.doPay = async function (code) {
+            if (!_payState.method) { toast('Pilih metode pembayaran dulu', 'error'); return; }
+            const btn = document.getElementById('btnPayNow');
+            if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
+            try {
+                const res = await api(`/bookings/${code}/pay`, { method: 'POST', body: JSON.stringify({ method: _payState.method }) });
+                clearInterval(_payTimer);
+                showSuccessScreen(res);
+                if (res.email_sent) toast(`Konfirmasi dikirim ke ${esc(res.email)}`, 'success');
+            } catch (e) {
+                toast(e.message, 'error');
+                if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
+                if (e.status === 410) { _payState.expired = true; renderPayment(); }
+            }
+        };
+
+        window.cancelPayBooking = async function (code) {
+            const btn = event.target.closest('button');
+            if (btn) { btn.disabled = true; }
+            try {
+                await api(`/bookings/${code}/cancel`, { method: 'POST' });
+                clearInterval(_payTimer);
+                toast('Pesanan dibatalkan', 'info');
+                location.hash = '#/pesanan';
+            } catch (e) {
+                toast(e.message, 'error');
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        /* ═══════════════════════════════════════════════════════════
            BOOKINGS VIEW
         ═══════════════════════════════════════════════════════ */
         async function viewBookings() {
@@ -2686,8 +2867,26 @@
 
         function ticketCard(b) {
             const photo = (b.destination?.name ? `/static/img/${b.destination_id || 1}-1.jpg` : '/static/img/1-1.jpg');
-            const badge = b.status === 'PAID' ? '<span class="badge badge-paid">✓ Lunas</span>' : '<span class="badge badge-refunded">↩ Refund</span>';
-            const pct = b.refundable_percent;
+            let badge, actions = '';
+            if (b.status === 'PAID' && !b.pending_visit_date) {
+                badge = '<span class="badge badge-paid">✓ Lunas</span>';
+                const pct = b.refundable_percent;
+                actions = `
+          <button class="btn btn-ghost btn-sm" onclick="showChangeModal('${esc(b.code)}', ${b.destination_id})">📅 Ubah tanggal</button>
+          <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="showRefundModal('${esc(b.code)}', ${b.total}, ${pct})">${pct}% Refund</button>`;
+            } else if (b.status === 'PAID' && b.pending_visit_date) {
+                badge = '<span class="badge" style="background:#fef3c7;color:#92400e">⏳ Bayar selisih</span>';
+                actions = `<button class="btn btn-primary btn-sm" onclick="location.hash='#/bayar/${esc(b.code)}'">Bayar selisih</button>`;
+            } else if (b.status === 'PENDING') {
+                badge = '<span class="badge" style="background:#fef3c7;color:#92400e"> Menunggu Pembayaran</span>';
+                actions = `<button class="btn btn-primary btn-sm" onclick="location.hash='#/bayar/${esc(b.code)}'">Bayar sekarang</button>`;
+            } else if (b.status === 'REFUNDED') {
+                badge = '<span class="badge badge-refunded">↩ Refund</span>';
+                actions = `<span style="font-size:0.78rem;color:var(--text-3)">Refund: ${fmt(b.refund_amount)}</span>`;
+            } else {
+                badge = '<span class="badge" style="background:#fee2e2;color:#b91c1c">⏰ Kedaluwarsa</span>';
+                actions = '';
+            }
             return `
     <div class="ticket-card" id="tc-${esc(b.code)}">
       <img class="ticket-img" src="${photo}" alt="${esc(b.destination?.name || '')}" loading="lazy" onerror="this.src='/static/img/1-1.jpg'">
@@ -2702,10 +2901,7 @@
         ${badge}
       </div>
       <div class="ticket-actions">
-        ${b.status === 'PAID' ? `
-          <button class="btn btn-ghost btn-sm" onclick="showChangeModal('${esc(b.code)}', ${b.destination_id})">📅 Ubah tanggal</button>
-          <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="showRefundModal('${esc(b.code)}', ${b.total}, ${pct})">${pct}% Refund</button>
-        ` : `<span style="font-size:0.78rem;color:var(--text-3)">Refund: ${fmt(b.refund_amount)}</span>`}
+        ${actions}
       </div>
     </div>`;
         }

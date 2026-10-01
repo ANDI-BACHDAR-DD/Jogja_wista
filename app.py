@@ -13,6 +13,7 @@ DB = os.getenv('DB_PATH', '/tmp/wisata.db' if IS_VERCEL else 'wisata.db')
 SECRET_KEY = os.getenv('SECRET_KEY', '')
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@wisatajogja.id')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'Admin12345')
+PAYMENT_WINDOW_MIN = 15  # Menit kedaluwarsa pembayaran simulasi
 
 if not SECRET_KEY:
     import secrets
@@ -77,10 +78,22 @@ def close(_):
 def init():
     c = sqlite3.connect(DB)
     c.executescript(SCHEMA)
-    # Tambah kolom user_id ke bookings bila belum ada (upgrade database lama)
+    # Upgrade database lama: tambah kolom via ALTER TABLE (dicek dengan PRAGMA)
     cols = [row[1] for row in c.execute("PRAGMA table_info(bookings)").fetchall()]
     if 'user_id' not in cols:
         c.execute("ALTER TABLE bookings ADD COLUMN user_id INTEGER REFERENCES users(id)")
+    if 'expires_at' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN expires_at TEXT")
+    if 'paid_at' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN paid_at TEXT")
+    if 'payment_method' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN payment_method TEXT")
+    if 'pending_visit_date' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN pending_visit_date TEXT")
+    if 'pending_unit_price' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN pending_unit_price INTEGER")
+    if 'due_amount' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN due_amount INTEGER")
     c.commit()
     # Isi data awal (idempotent: hanya jika tabel kosong)
     if not c.execute('SELECT 1 FROM regions').fetchone():
@@ -129,9 +142,21 @@ def unit_price(d, visit, tier):
     if d['price_weekend'] and visit.weekday() >= 5: return d['price_weekend']
     return d['price'] or 0
 
+def now_iso():
+    return datetime.now().isoformat(timespec='seconds')
+
+def expire_stale():
+    """Tandai PENDING yang lewat waktu bayar sebagai EXPIRED (lazy, tanpa job)."""
+    db().execute("UPDATE bookings SET status='EXPIRED', updated_at=? WHERE status='PENDING' AND expires_at IS NOT NULL AND expires_at < ?",
+        (now_iso(), now_iso()))
+    db().commit()
+
 def sold(dest_id, day, exclude=None):
-    r = db().execute("SELECT COALESCE(SUM(qty),0) FROM bookings WHERE destination_id=? AND visit_date=? AND status='PAID' AND code!=?",
-        (dest_id, day, exclude or '')).fetchone()
+    """Kuota terjual = PAID + PENDING yang belum kedaluwarsa."""
+    r = db().execute("""SELECT COALESCE(SUM(qty),0) FROM bookings
+        WHERE destination_id=? AND visit_date=? AND code!=?
+          AND (status='PAID' OR (status='PENDING' AND expires_at IS NOT NULL AND expires_at > ?))""",
+        (dest_id, day, exclude or '', now_iso())).fetchone()
     return r[0]
 
 def parse_visit(s):
@@ -238,6 +263,7 @@ def delete_dest(i):
 
 @app.get('/api/destinations/<int:i>/calendar')
 def calendar(i):
+    expire_stale()
     r = db().execute('SELECT * FROM destinations WHERE id=?', (i,)).fetchone()
     if not r: return err('Wisata tidak ditemukan', 404)
     try: y, m = map(int, request.args.get('month', date.today().strftime('%Y-%m')).split('-')); d0 = date(y, m, 1)
@@ -267,6 +293,7 @@ def one(code):
 
 @app.post('/api/bookings')
 def create_booking():
+    expire_stale()
     u = require_login()
     if isinstance(u, tuple): return u
     b = request.get_json(force=True)
@@ -282,22 +309,17 @@ def create_booking():
     if not (name and '@' in email): return err('Nama dan email valid wajib diisi')
     tier = 'plus' if b.get('tier') == 'plus' and d['price_max'] else 'base'
     if sold(d['id'], visit.isoformat()) + qty > d['daily_quota']: return err('Kuota tanggal tersebut tidak mencukupi', 409)
-    up = unit_price(d, visit, tier); now = datetime.now().isoformat(timespec='seconds'); code = new_code()
-    db().execute('INSERT INTO bookings(code,destination_id,visit_date,qty,tier,unit_price,total,name,email,phone,status,refund_amount,refund_reason,created_at,updated_at,user_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        (code, d['id'], visit.isoformat(), qty, tier, up, up * qty, name, email, b.get('phone', ''), 'PAID', 0, None, now, now, u['id']))
+    up = unit_price(d, visit, tier); now = now_iso(); code = new_code()
+    expires_at = (datetime.now() + timedelta(minutes=PAYMENT_WINDOW_MIN)).isoformat(timespec='seconds')
+    db().execute('INSERT INTO bookings(code,destination_id,visit_date,qty,tier,unit_price,total,name,email,phone,status,refund_amount,refund_reason,created_at,updated_at,user_id,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        (code, d['id'], visit.isoformat(), qty, tier, up, up * qty, name, email, b.get('phone', ''), 'PENDING', 0, None, now, now, u['id'], expires_at))
     db().commit()
-    import mailer
     b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
-    try:
-        mailer.send_booking_success(b_resp)
-        b_resp['email_sent'] = True
-    except Exception as ex:
-        app.logger.error(f"Mailer error: {ex}")
-        b_resp['email_sent'] = False
     return jsonify(b_resp), 201
 
 @app.get('/api/bookings')
 def list_bookings():
+    expire_stale()
     u = current_user()
     email_q, code_q = request.args.get('email', '').lower(), request.args.get('code', '')
     # Admin bisa lihat semua dengan filter
@@ -329,6 +351,71 @@ def can_modify_booking(r):
     u = current_user()
     if u and r['user_id'] == u['id']: return True
     return False
+
+PAYMENT_METHODS = {'qris', 'va_bca', 'va_bni', 'va_mandiri', 'gopay', 'ovo', 'dana'}
+
+@app.post('/api/bookings/<code>/pay')
+def pay_booking(code):
+    expire_stale()
+    r = one(code)
+    if not r: return err('Booking tidak ditemukan', 404)
+    if not can_modify_booking(r): return err('Akses ditolak', 403)
+    b = request.get_json(silent=True) or {}
+    method = b.get('method', '')
+    if method not in PAYMENT_METHODS:
+        return err('Metode pembayaran tidak valid')
+    # Kasus PENDING (booking baru)
+    if r['status'] == 'PENDING':
+        if r['expires_at'] and r['expires_at'] < now_iso():
+            db().execute("UPDATE bookings SET status='EXPIRED', updated_at=? WHERE code=?", (now_iso(), code))
+            db().commit()
+            return err('Waktu pembayaran habis', 410)
+        db().execute("UPDATE bookings SET status='PAID', paid_at=?, payment_method=?, updated_at=? WHERE code=?",
+            (now_iso(), method, now_iso(), code))
+        db().commit()
+        import mailer
+        b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
+        try:
+            mailer.send_booking_success(b_resp)
+            b_resp['email_sent'] = True
+        except Exception as ex:
+            app.logger.error(f"Mailer error: {ex}")
+            b_resp['email_sent'] = False
+        return jsonify(b_resp)
+    # Booking sudah EXPIRED (mungkin baru saja di-mark oleh expire_stale)
+    if r['status'] == 'EXPIRED':
+        return err('Waktu pembayaran habis', 410)
+    # Kasus PAID dengan pending_visit_date (Fase 3: bayar selisih)
+    if r['status'] == 'PAID' and r['pending_visit_date']:
+        if r['expires_at'] and r['expires_at'] < now_iso():
+            # Pending kedaluwarsa: buang pending, tanggal lama tetap
+            db().execute("UPDATE bookings SET pending_visit_date=NULL, pending_unit_price=NULL, due_amount=NULL, expires_at=NULL, updated_at=? WHERE code=?",
+                (now_iso(), code))
+            db().commit()
+            return err('Waktu pembayaran habis', 410)
+        due = r['due_amount'] or 0
+        new_up = r['pending_unit_price'] or r['unit_price']
+        qty = r['qty']
+        db().execute("UPDATE bookings SET visit_date=?, unit_price=?, total=?, pending_visit_date=NULL, pending_unit_price=NULL, due_amount=NULL, expires_at=NULL, paid_at=?, payment_method=?, updated_at=? WHERE code=?",
+            (r['pending_visit_date'], new_up, new_up * qty, now_iso(), method, now_iso(), code))
+        db().commit()
+        import mailer
+        b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
+        try: mailer.send_booking_update(b_resp)
+        except Exception as ex: app.logger.error(f"Mailer error: {ex}")
+        return jsonify(b_resp)
+    return err('Booking tidak dapat dibayar', 409)
+
+@app.post('/api/bookings/<code>/cancel')
+def cancel_booking(code):
+    expire_stale()
+    r = one(code)
+    if not r: return err('Booking tidak ditemukan', 404)
+    if not can_modify_booking(r): return err('Akses ditolak', 403)
+    if r['status'] != 'PENDING': return err('Hanya pesanan menunggu pembayaran yang dapat dibatalkan', 409)
+    db().execute("UPDATE bookings SET status='EXPIRED', updated_at=? WHERE code=?", (now_iso(), code))
+    db().commit()
+    return jsonify(booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone()))
 
 @app.put('/api/bookings/<code>')
 def update_booking(code):
