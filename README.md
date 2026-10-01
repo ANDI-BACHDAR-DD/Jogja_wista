@@ -24,12 +24,14 @@ Buka browser: `http://localhost:5000`
 | Fitur | Keterangan |
 |---|---|
 | 🗺️ Jelajahi Destinasi | 62 wisata, 5 wilayah, filter & pencarian |
-| 📅 Kalender Kustom | Ketersediaan, harga per tanggal, kuota |
-| 🎫 Pemesanan | Stepper 3 langkah, konfirmasi e-ticket |
-| ↩ Refund | 100% ≥3 hari, 50% 1-2 hari, 0% hari-H |
+| 📅 Kalender Kustom | Ketersediaan, harga per tanggal (termasuk akhir pekan), kuota |
+| 🎫 Pemesanan | Stepper 3 langkah, kode booking `WJ-XXXXXXXX`, status awal PENDING |
+| 💳 Pembayaran Simulasi | Halaman `/bayar/{code}`: countdown 15 menit, metode QRIS/VA/e-wallet |
+| 📅 Ubah Tanggal | Hanya `visit_date`; harga lama terkunci; bayar selisih bila lebih mahal |
+| ↩ Refund | 100% ≥3 hari, 50% 1-2 hari, 0% hari-H (hanya status PAID) |
 | 👤 Akun | Daftar, masuk, keluar, token JWT-style |
 | ⚙️ Admin | CRUD wisata (token header) |
-| 📧 Email | Notifikasi konfirmasi, update, refund |
+| 📧 Email | Notifikasi konfirmasi (saat bayar), update, refund |
 | 🌙 Tema | Terang/gelap, disimpan di localStorage |
 | ❤️ Favorit | Tersimpan di localStorage |
 
@@ -71,6 +73,20 @@ curl http://localhost:5000/api/auth/me \
 - Refund/ubah hanya boleh oleh pemilik booking atau admin
 - Selain itu: HTTP 403 Forbidden
 
+## Alur Pembayaran (Simulasi)
+
+1. Pesan tiket → booking **PENDING**, `expires_at` = +15 menit.
+2. Buka `#/bayar/{code}` → pilih metode bayar (QRIS/VA/e-wallet) → instruksi tampil.
+3. Klik **Saya Sudah Bayar** → `POST /pay` → status **PAID**.
+4. PENDING yang lewat batas waktu → **EXPIRED** otomatis (lazy).
+5. **Batalkan** pada PENDING → langsung EXPIRED (tanpa refund).
+
+**Metode pembayaran:** `qris`, `va_bca`, `va_bni`, `va_mandiri`, `gopay`, `ovo`, `dana`.
+
+**Harga akhir pekan:** destinasi dengan `price_weekend` memakai harga itu; destinasi lainnya = harga dasar + `WEEKEND_SURCHARGE` (default Rp5.000). Harga Rp0 tidak dikenai tambahan.
+
+**Ubah tanggal:** hanya `visit_date` yang boleh dikirim. Harga lama terkunci. Jika tanggal baru lebih mahal → bayar selisih dulu sebelum tanggal aktif. Jika lebih murah → total tetap (tanpa pengembalian).
+
 ## Ringkasan Semua Endpoint
 
 | Metode | Path | Auth |
@@ -82,11 +98,13 @@ curl http://localhost:5000/api/auth/me \
 | POST | `/api/destinations` | Admin |
 | PUT | `/api/destinations/{id}` | Admin |
 | DELETE | `/api/destinations/{id}` | Admin |
-| POST | `/api/bookings` | Login |
+| POST | `/api/bookings` | Login (status awal PENDING + `expires_at`) |
 | GET | `/api/bookings` | Login / email+kode |
 | GET | `/api/bookings/{code}` | - |
-| PUT | `/api/bookings/{code}` | Pemilik/Admin |
-| POST | `/api/bookings/{code}/refund` | Pemilik/Admin |
+| PUT | `/api/bookings/{code}` | Pemilik/Admin (hanya `{visit_date}`) |
+| POST | `/api/bookings/{code}/pay` | Pemilik (bayar simulasi `{payment_method}`) |
+| POST | `/api/bookings/{code}/cancel` | Pemilik/Admin (batalkan PENDING) |
+| POST | `/api/bookings/{code}/refund` | Pemilik/Admin (hanya PAID) |
 | DELETE | `/api/bookings/{code}` | Admin |
 
 ## Environment Variables
@@ -99,6 +117,8 @@ curl http://localhost:5000/api/auth/me \
 | `SECRET_KEY` | *(acak tiap start)* | Kunci signing token auth (**wajib di-set di produksi**) |
 | `ADMIN_EMAIL` | `admin@wisatajogja.id` | Email admin default |
 | `ADMIN_PASSWORD` | `Admin12345` | Password admin default (**ganti di produksi!**) |
+| `PAYMENT_WINDOW_MIN` | `15` | Menit kedaluwarsa pembayaran simulasi |
+| `WEEKEND_SURCHARGE` | `5000` | Tambahan harga akhir pekan (Sabtu/Minggu) untuk destinasi tanpa `price_weekend` |
 | `SMTP_HOST` | `smtp.gmail.com` | SMTP server |
 | `SMTP_PORT` | `587` | SMTP port (STARTTLS) |
 | `SMTP_USER` | *(kosong)* | Akun email pengirim |
@@ -134,8 +154,21 @@ Jika `SMTP_USER` tidak di-set, email tidak terkirim — isinya dicetak ke consol
 
 ## Upgrade dari Database Lama
 
-Jika Anda memiliki `wisata.db` lama (sebelum fitur akun), tidak perlu dihapus.
-Script `init()` di `app.py` otomatis menambahkan kolom `user_id` ke tabel `bookings` via `ALTER TABLE` yang dibungkus pengecekan `PRAGMA table_info`. Data lama tetap aman.
+Jika Anda memiliki `wisata.db` lama (sebelum fitur akun & pembayaran), tidak perlu dihapus.
+Script `init()` di `app.py` otomatis menambahkan kolom baru via `ALTER TABLE` yang dibungkus pengecekan `PRAGMA table_info`:
+- `user_id` ke tabel `bookings` (fitur akun)
+- `expires_at`, `paid_at`, `payment_method`, `pending_visit_date`, `pending_unit_price`, `due_amount` ke tabel `bookings` (fitur pembayaran simulasi & ubah tanggal)
+
+Data lama tetap aman.
+
+## Status Booking
+
+| Status | Arti |
+|---|---|
+| `PENDING` | Baru dibuat, menunggu pembayaran (batas waktu 15 menit) |
+| `PAID` | Lunas (via simulasi pembayaran) |
+| `REFUNDED` | Dikembalikan dana |
+| `EXPIRED` | PENDING kedaluwarsa atau dibatalkan |
 
 ## Menjalankan Tes
 
@@ -144,7 +177,7 @@ source venv/bin/activate
 python test_api.py
 ```
 
-Output yang diharapkan: `Ran 17 tests in X.Xs | OK`
+Output yang diharapkan: `Ran 43 tests in X.Xs | OK`
 
 ## Struktur Folder
 
@@ -153,14 +186,17 @@ Jogja_wisata/
 ├── app.py              # Backend Flask
 ├── mailer.py           # Notifikasi email
 ├── import_xlsx.py      # ETL dari Excel → JSON + foto
-├── test_api.py         # Tes integrasi (17 tes)
+├── test_api.py         # Tes integrasi (43 tes)
 ├── requirements.txt
+├── vercel.json         # Konfigurasi deploy Vercel
 ├── README.md
 ├── .gitignore          # Menyertakan .env
 ├── data/
 │   └── destinations.json
+├── public/
+│   └── index.html      # Frontend SPA (dilayani dari public/)
 ├── static/
-│   ├── index.html      # Frontend SPA
+│   ├── index.html      # Backup frontend
 │   └── img/            # 124 foto wisata
 └── wisata.db           # SQLite database
 ```
