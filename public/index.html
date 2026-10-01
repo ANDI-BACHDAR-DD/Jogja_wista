@@ -2508,14 +2508,18 @@
             const d = _detail.dest; const sd = _detail.selectedDate;
             const unit = getUnitPrice();
             const total = unit * _detail.qty;
+            const isWe = sd && sd.isWeekend;
+            const baseWe = d.price_weekend || (d.price || 0);
+            const hasWeNote = isWe && sd && sd.weekendNote;
             return `
     ${renderStepper(3)}
     <h3 class="h3" style="margin-bottom:1.25rem">Konfirmasi Pesanan</h3>
     <div class="price-summary">
       <div class="price-row"><span>Wisata</span><span>${esc(d.name)}</span></div>
-      <div class="price-row"><span>Tanggal</span><span>${sd ? fmtDate(sd.date) : '-'}</span></div>
+      <div class="price-row"><span>Tanggal</span><span>${sd ? fmtDate(sd.date) : '-'}${isWe ? ' 🌴' : ''}</span></div>
       <div class="price-row"><span>Jumlah Tiket</span><span>${_detail.qty}</span></div>
       <div class="price-row"><span>Harga/tiket</span><span>${fmt(unit)}</span></div>
+      ${hasWeNote ? `<div class="price-row" style="color:var(--clr-primary)"><span>${esc(sd.weekendNote)}</span><span>${fmt(unit - (d.price || 0))}</span></div>` : ''}
       <div class="price-row"><span>Total Pembayaran</span><span class="price-total-val">${fmt(total)}</span></div>
     </div>
     <div id="bookResult"></div>
@@ -2529,7 +2533,7 @@
         function getUnitPrice() {
             const d = _detail.dest; const sd = _detail.selectedDate;
             if (!sd) return d.price || 0;
-            if (_detail.tier === 'plus' && d.price_max) return d.price_max;
+            if (_detail.tier === 'plus' && d.price_max) return sd.pricePlus || d.price_max;
             return sd.price || d.price || 0;
         }
 
@@ -2579,13 +2583,13 @@
                 else if (isWeekend) cls += ' weekend';
                 const priceStr = day.price ? `${(day.price / 1000).toFixed(0)}k` : '';
                 const clickable = !day.past && !isSoldOut;
-                return `<div class="${cls}" ${clickable ? `onclick="selectDate('${day.date}', ${day.price})"` : ''} role="${clickable ? 'button' : 'presentation'}" ${clickable ? `tabindex="0" aria-label="${day.date} - ${priceStr}"` : ''}>${d.getDate()}<span class="cal-day-price">${priceStr}</span></div>`;
+                return `<div class="${cls}" ${clickable ? `onclick="selectDate('${day.date}', ${day.price}, ${day.price_plus || 0}, ${day.is_weekend ? 'true' : 'false'}, '${esc(day.weekend_note || '')}')"` : ''} role="${clickable ? 'button' : 'presentation'}" ${clickable ? `tabindex="0" aria-label="${day.date} - ${priceStr}"` : ''}>${d.getDate()}<span class="cal-day-price">${priceStr}</span></div>`;
             }).join('');
             grid.innerHTML = days + blanks + cells;
         }
 
-        window.selectDate = function (dateStr, price) {
-            _detail.selectedDate = { date: dateStr, price };
+        window.selectDate = function (dateStr, price, pricePlus, isWeekend, weekendNote) {
+            _detail.selectedDate = { date: dateStr, price, pricePlus: pricePlus || 0, isWeekend: !!isWeekend, weekendNote: weekendNote || '' };
             renderCal();
             updatePriceDisplay();
             document.getElementById('priceSummary')?.style.removeProperty('display');
@@ -2909,16 +2913,28 @@
         let _changeModal = null;
 
         window.showChangeModal = function (code, destId) {
-            _changeModal = { code, destId, selected: null, year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+            _changeModal = { code, destId, selected: null, year: new Date().getFullYear(), month: new Date().getMonth() + 1, oldUnit: null, newUnit: null };
+            // Ambil data booking lama untuk harga
+            api(`/bookings/${code}`).then(b => {
+                _changeModal.oldUnit = b.unit_price;
+                _changeModal.oldQty = b.qty;
+                _changeModal.tier = b.tier;
+                _changeModal.destId = b.destination_id;
+                renderChangeModal();
+            }).catch(() => { closeModal(); toast('Gagal memuat pesanan', 'error'); });
+        };
+
+        function renderChangeModal() {
             openModal('Ubah Tanggal Kunjungan', `
-    <p style="color:var(--text-2);font-size:0.9rem;margin-bottom:1rem">Pilih tanggal kunjungan baru. Harga tetap; jika tanggal baru lebih mahal, Anda akan diarahkan ke pembayaran selisih.</p>
+    <p style="color:var(--text-2);font-size:0.9rem;margin-bottom:1rem">Pilih tanggal kunjungan baru. Jika harga baru lebih mahal, Anda akan diarahkan ke pembayaran selisih.</p>
     <div class="cal-header">
       <button class="cal-btn" id="cmPrev" aria-label="Bulan sebelumnya">‹</button>
       <span class="cal-month-label" id="cmMonth"></span>
       <button class="cal-btn" id="cmNext" aria-label="Bulan berikutnya">›</button>
     </div>
     <div class="cal-grid" id="cmGrid"></div>
-    <div id="cmSelected" style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-2)"></div>
+    <div id="cmPriceInfo" style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-2)"></div>
+    <div id="cmSelected" style="margin-top:0.25rem;font-size:0.875rem;color:var(--text-2)"></div>
     <div style="display:flex;gap:0.75rem;margin-top:1.25rem">
       <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Batal</button>
       <button class="btn btn-primary" style="flex:2" id="cmSave" disabled onclick="doChangeBooking()">Simpan tanggal baru</button>
@@ -2927,7 +2943,7 @@
             document.getElementById('cmPrev').onclick = () => changeCMonth(-1);
             document.getElementById('cmNext').onclick = () => changeCMonth(1);
             loadCMonth();
-        };
+        }
 
         function changeCMonth(d) {
             if (!_changeModal) return;
@@ -2959,11 +2975,13 @@
                     const isSoldOut = day.remaining === 0;
                     const isSelected = _changeModal.selected === day.date;
                     let cls = 'cal-day';
+                    if (day.is_weekend) cls += ' weekend';
                     if (isPast) cls += ' past';
                     else if (isSoldOut) cls += ' sold-out';
                     else if (isSelected) cls += ' selected';
                     const clickable = !isPast && !isSoldOut;
-                    return `<div class="${cls}" ${clickable ? `onclick="selectChangeDate('${day.date}',${day.price})"` : ''} role="${clickable ? 'button' : 'presentation'}">${dd.getDate()}<span class="cal-day-price">${day.price ? (day.price / 1000).toFixed(0) + 'k' : ''}</span></div>`;
+                    const dayPrice = (_changeModal.tier === 'plus' && day.price_plus) ? day.price_plus : day.price;
+                    return `<div class="${cls}" ${clickable ? `onclick="selectChangeDate('${day.date}',${dayPrice},${day.is_weekend ? 'true' : 'false'},'${esc(day.weekend_note || '')}')"` : ''} role="${clickable ? 'button' : 'presentation'}">${dd.getDate()}<span class="cal-day-price">${dayPrice ? (dayPrice / 1000).toFixed(0) + 'k' : ''}</span></div>`;
                 }).join('');
                 grid.innerHTML = days + blanks + cells;
             } catch (e) {
@@ -2971,13 +2989,33 @@
             }
         }
 
-        window.selectChangeDate = function (dateStr, price) {
+        window.selectChangeDate = function (dateStr, price, isWeekend, weekendNote) {
             if (!_changeModal) return;
             _changeModal.selected = dateStr;
+            _changeModal.newUnit = price;
+            _changeModal.newIsWeekend = !!isWeekend;
+            _changeModal.newNote = weekendNote || '';
             const sel = document.getElementById('cmSelected');
+            const info = document.getElementById('cmPriceInfo');
+            const oldU = _changeModal.oldUnit || 0;
+            const newU = price || 0;
+            const qty = _changeModal.oldQty || 1;
+            const diff = (newU - oldU) * qty;
             if (sel) sel.textContent = `Tanggal dipilih: ${fmtDate(dateStr)}`;
+            if (info) {
+                let html = `Harga lama: <strong>${fmt(oldU)}</strong> · Harga baru: <strong>${fmt(newU)}</strong>`;
+                if (isWeekend && weekendNote) html += ` <span style="color:var(--clr-primary)">(${esc(weekendNote)})</span>`;
+                if (diff > 0) html += `<br>Selisih yang harus dibayar: <strong style="color:var(--clr-primary)">${fmt(diff)}</strong>`;
+                else if (diff === 0) html += `<br><span style="color:var(--success)">Harga sama</span>`;
+                else html += `<br><span style="color:var(--text-3)">Harga lebih murah - tidak ada pengembalian selisih</span>`;
+                info.innerHTML = html;
+            }
             const btn = document.getElementById('cmSave');
-            if (btn) btn.disabled = false;
+            if (btn) {
+                btn.disabled = false;
+                if (diff > 0) { btn.textContent = `Bayar selisih ${fmt(diff)}`; }
+                else { btn.textContent = 'Simpan tanggal baru'; }
+            }
             loadCMonth();
         };
 
@@ -2986,8 +3024,14 @@
             const btn = document.getElementById('cmSave');
             if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
             try {
-                await api(`/bookings/${_changeModal.code}`, { method: 'PUT', body: JSON.stringify({ visit_date: _changeModal.selected }) });
-                closeModal(); toast('Tanggal kunjungan berhasil diubah ✓', 'success'); viewBookings();
+                const res = await api(`/bookings/${_changeModal.code}`, { method: 'PUT', body: JSON.stringify({ visit_date: _changeModal.selected }) });
+                if (res.requires_payment) {
+                    closeModal();
+                    toast('Tanggal lebih mahal - bayar selisih dulu', 'info');
+                    location.hash = `#/bayar/${_changeModal.code}`;
+                } else {
+                    closeModal(); toast('Tanggal kunjungan berhasil diubah ✓', 'success'); viewBookings();
+                }
             } catch (e) {
                 toast(e.message, 'error');
                 if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }

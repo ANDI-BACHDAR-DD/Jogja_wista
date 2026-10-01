@@ -14,6 +14,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', '')
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@wisatajogja.id')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'Admin12345')
 PAYMENT_WINDOW_MIN = 15  # Menit kedaluwarsa pembayaran simulasi
+WEEKEND_SURCHARGE = int(os.getenv('WEEKEND_SURCHARGE', '5000'))  # 0 = nonaktif
 
 if not SECRET_KEY:
     import secrets
@@ -138,17 +139,47 @@ def require_login():
     return u
 
 def unit_price(d, visit, tier):
-    if tier == 'plus' and d['price_max']: return d['price_max']
-    if d['price_weekend'] and visit.weekday() >= 5: return d['price_weekend']
-    return d['price'] or 0
+    """Satu fungsi harga untuk kalender, booking, dan ubah tanggal."""
+    is_we = visit.weekday() >= 5  # Sabtu=5, Minggu=6
+    if tier == 'plus' and d['price_max']:
+        base = d['price_max']
+        if is_we and WEEKEND_SURCHARGE > 0 and base > 0:
+            return base + WEEKEND_SURCHARGE
+        return base
+    if d['price_weekend'] and is_we:
+        return d['price_weekend']  # Tarif spreadsheet sudah final
+    base = d['price'] or 0
+    if is_we and WEEKEND_SURCHARGE > 0 and base > 0:
+        return base + WEEKEND_SURCHARGE
+    return base
+
+def is_weekend_date(visit):
+    return visit.weekday() >= 5
+
+def weekend_note(d, visit):
+    """Keterangan legend akhir pekan untuk frontend."""
+    if not is_weekend_date(visit) or WEEKEND_SURCHARGE <= 0:
+        return None
+    if d['price_weekend']:
+        return 'Tarif akhir pekan'
+    base = d['price'] or 0
+    if base <= 0:
+        return None
+    return f'Akhir pekan +Rp{WEEKEND_SURCHARGE:,}'
 
 def now_iso():
     return datetime.now().isoformat(timespec='seconds')
 
 def expire_stale():
-    """Tandai PENDING yang lewat waktu bayar sebagai EXPIRED (lazy, tanpa job)."""
+    """Lazy expiry (tanpa job, cocok untuk Vercel):
+    - PENDING lewat waktu -> EXPIRED
+    - PAID dengan pending_visit_date lewat waktu -> buang pending, tanggal lama tetap
+    """
+    now = now_iso()
     db().execute("UPDATE bookings SET status='EXPIRED', updated_at=? WHERE status='PENDING' AND expires_at IS NOT NULL AND expires_at < ?",
-        (now_iso(), now_iso()))
+        (now, now))
+    db().execute("UPDATE bookings SET pending_visit_date=NULL, pending_unit_price=NULL, due_amount=NULL, expires_at=NULL, updated_at=? WHERE status='PAID' AND pending_visit_date IS NOT NULL AND expires_at IS NOT NULL AND expires_at < ?",
+        (now, now))
     db().commit()
 
 def sold(dest_id, day, exclude=None):
@@ -270,8 +301,14 @@ def calendar(i):
     except Exception: return err('month harus YYYY-MM')
     out, d = [], d0
     while d.month == m:
-        out.append(dict(date=d.isoformat(), price=unit_price(r, d, 'base'), price_plus=r['price_max'], past=d < date.today(),
-                        remaining=max(0, r['daily_quota'] - sold(i, d.isoformat()))))
+        is_we = d.weekday() >= 5
+        price_plus = r['price_max']
+        if is_we and WEEKEND_SURCHARGE > 0 and price_plus and price_plus > 0:
+            price_plus += WEEKEND_SURCHARGE
+        out.append(dict(date=d.isoformat(), price=unit_price(r, d, 'base'), price_plus=price_plus,
+                        past=d < date.today(), is_weekend=is_we,
+                        remaining=max(0, r['daily_quota'] - sold(i, d.isoformat())),
+                        weekend_note=weekend_note(r, d)))
         d += timedelta(days=1)
     return jsonify(out)
 
@@ -343,6 +380,7 @@ def list_bookings():
 
 @app.get('/api/bookings/<code>')
 def get_booking(code):
+    expire_stale()
     r = one(code); return jsonify(booking(r)) if r else err('Booking tidak ditemukan', 404)
 
 def can_modify_booking(r):
@@ -447,14 +485,29 @@ def update_booking(code):
         return err('Tanggal baru tidak boleh hari ini atau lampau')
     if sold(d['id'], new_visit.isoformat(), code) + r['qty'] > d['daily_quota']:
         return err('Kuota tidak mencukupi', 409)
-    # Harga TERKUNCI: unit_price dan total tidak berubah
-    db().execute('UPDATE bookings SET visit_date=?,updated_at=? WHERE code=?',
-        (new_visit.isoformat(), datetime.now().isoformat(timespec='seconds'), code))
+    now = now_iso()
+    new_up = unit_price(d, new_visit, r['tier'])
+    old_up = r['unit_price']
+    # Harga baru <= harga lama: tanggal langsung berubah, harga tetap
+    if new_up <= old_up:
+        db().execute('UPDATE bookings SET visit_date=?,updated_at=? WHERE code=?',
+            (new_visit.isoformat(), now, code))
+        db().commit()
+        import mailer
+        b_resp = get_booking(code).json
+        try: mailer.send_booking_update(b_resp)
+        except Exception as ex: app.logger.error(f"Mailer error: {ex}")
+        return jsonify(b_resp)
+    # Harga baru > harga lama: simpan pending, minta pembayaran selisih
+    due = (new_up - old_up) * r['qty']
+    expires_at = (datetime.now() + timedelta(minutes=PAYMENT_WINDOW_MIN)).isoformat(timespec='seconds')
+    db().execute('UPDATE bookings SET pending_visit_date=?, pending_unit_price=?, due_amount=?, expires_at=?, updated_at=? WHERE code=?',
+        (new_visit.isoformat(), new_up, due, expires_at, now, code))
     db().commit()
-    import mailer
     b_resp = get_booking(code).json
-    try: mailer.send_booking_update(b_resp)
-    except Exception as ex: app.logger.error(f"Mailer error: {ex}")
+    b_resp['requires_payment'] = True
+    b_resp['due_amount'] = due
+    b_resp['expires_at'] = expires_at
     return jsonify(b_resp)
 
 @app.post('/api/bookings/<code>/refund')

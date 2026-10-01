@@ -330,7 +330,12 @@ class TestBookings(unittest.TestCase):
         self.assertEqual(r.status_code, 201)
         code = r.get_json()['code']
         self._pay(code, token)
+        # Ubah ke hari kerja berikutnya (bukan weekend) agar harga tidak naik
         day_after = self._future_date(2)
+        d_obj = datetime.date.fromisoformat(day_after)
+        while d_obj.weekday() >= 5:
+            day_after = (d_obj + datetime.timedelta(days=1)).isoformat()
+            d_obj = datetime.date.fromisoformat(day_after)
         r2 = client.put(f'/api/bookings/{code}', json={'visit_date': day_after},
                         headers={'Authorization': f'Bearer {token}'})
         self.assertEqual(r2.status_code, 200)
@@ -457,6 +462,172 @@ class TestBookings(unittest.TestCase):
             r2 = self._pay(code, token, method=m)
             self.assertEqual(r2.status_code, 200, f'method {m} failed')
             self.assertEqual(r2.get_json()['payment_method'], m)
+
+    # ── FASE 3: Weekend pricing + selisih ubah tanggal ────────────
+
+    def _find_weekday_and_weekend(self, days_ahead=14):
+        """Cari tanggal weekday dan weekend di masa depan."""
+        base = datetime.date.today() + datetime.timedelta(days=days_ahead)
+        # Cari Senin (weekday) terdekat
+        wd = base
+        while wd.weekday() >= 5:
+            wd += datetime.timedelta(days=1)
+        # Cari Sabtu (weekend) terdekat
+        we = base
+        while we.weekday() < 5:
+            we += datetime.timedelta(days=1)
+        return wd.isoformat(), we.isoformat()
+
+    @patch('mailer.send_email_background')
+    def test_30_weekend_surcharge_for_destination_without_price_weekend(self, mock_send):
+        """Destinasi tanpa price_weekend: harga akhir pekan = dasar + WEEKEND_SURCHARGE."""
+        dests = client.get('/api/destinations').get_json()
+        # Cari destinasi dengan price=0? tidak, cari yang price>0 dan price_weekend=0
+        d = next(x for x in dests if x['price'] > 0 and not x['price_weekend'])
+        wd, we = self._find_weekday_and_weekend()
+        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        wd_day = next(x for x in cal if x['date'] == wd)
+        we_day = next(x for x in cal if x['date'] == we)
+        self.assertEqual(wd_day['price'], d['price'])
+        self.assertEqual(we_day['price'], d['price'] + app.WEEKEND_SURCHARGE)
+        self.assertTrue(we_day['is_weekend'])
+        self.assertFalse(wd_day['is_weekend'])
+
+    @patch('mailer.send_email_background')
+    def test_31_gembira_loka_weekend_price(self, mock_send):
+        """Gembira Loka (id 5): 60.000 hari kerja, 75.000 akhir pekan (dari spreadsheet)."""
+        cal = client.get('/api/destinations/5/calendar').get_json()
+        wd, we = self._find_weekday_and_weekend()
+        wd_day = next(x for x in cal if x['date'] == wd)
+        we_day = next(x for x in cal if x['date'] == we)
+        self.assertEqual(wd_day['price'], 60000)
+        self.assertEqual(we_day['price'], 75000)
+
+    @patch('mailer.send_email_background')
+    def test_32_free_destination_no_surcharge(self, mock_send):
+        """Destinasi gratis (harga 0) tidak dikenai tambahan akhir pekan."""
+        dests = client.get('/api/destinations').get_json()
+        d = next(x for x in dests if x['price'] == 0 and not x['price_weekend'])
+        wd, we = self._find_weekday_and_weekend()
+        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        wd_day = next(x for x in cal if x['date'] == wd)
+        we_day = next(x for x in cal if x['date'] == we)
+        self.assertEqual(wd_day['price'], 0)
+        self.assertEqual(we_day['price'], 0)
+
+    @patch('mailer.send_email_background')
+    def test_33_change_date_cheaper_total_stays(self, mock_send):
+        """Ubah ke tanggal lebih murah: total TETAP (tidak ada pengembalian selisih)."""
+        token = self._get_token('we1@test.com', 'We One')
+        # Booking pada hari kerja (harga dasar)
+        wd, we = self._find_weekday_and_weekend(20)
+        dests = client.get('/api/destinations').get_json()
+        d = next(x for x in dests if x['price'] > 0 and not x['price_weekend'])
+        r = client.post('/api/bookings', json={
+            'destination_id': d['id'], 'visit_date': we, 'qty': 1,
+            'name': 'We One', 'email': 'we1@test.com'
+        }, headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r.status_code, 201)
+        code = r.get_json()['code']
+        self._pay(code, token)
+        # Booking sekarang ada di weekend (harga lebih mahal)
+        b = client.get(f'/api/bookings/{code}', headers={'Authorization': f'Bearer {token}'}).get_json()
+        self.assertEqual(b['visit_date'], we)
+        self.assertEqual(b['unit_price'], d['price'] + app.WEEKEND_SURCHARGE)
+        old_total = b['total']
+        # Ubah ke hari kerja (lebih murah)
+        r2 = client.put(f'/api/bookings/{code}', json={'visit_date': wd},
+                        headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 200)
+        b2 = r2.get_json()
+        self.assertEqual(b2['visit_date'], wd)
+        # Total TETAP
+        self.assertEqual(b2['total'], old_total)
+        self.assertEqual(b2['unit_price'], b['unit_price'])
+        self.assertFalse(b2.get('requires_payment'))
+
+    @patch('mailer.send_email_background')
+    def test_34_change_date_more_expensive_requires_payment(self, mock_send):
+        """Ubah ke tanggal lebih mahal: requires_payment, tanggal belum berubah."""
+        token = self._get_token('we2@test.com', 'We Two')
+        wd, we = self._find_weekday_and_weekend(20)
+        dests = client.get('/api/destinations').get_json()
+        d = next(x for x in dests if x['price'] > 0 and not x['price_weekend'])
+        # Booking di hari kerja (harga dasar)
+        r = client.post('/api/bookings', json={
+            'destination_id': d['id'], 'visit_date': wd, 'qty': 1,
+            'name': 'We Two', 'email': 'we2@test.com'
+        }, headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r.status_code, 201)
+        code = r.get_json()['code']
+        self._pay(code, token)
+        old_total = d['price']
+        # Ubah ke weekend (lebih mahal)
+        r2 = client.put(f'/api/bookings/{code}', json={'visit_date': we},
+                        headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 200)
+        b2 = r2.get_json()
+        self.assertTrue(b2.get('requires_payment'))
+        self.assertEqual(b2['due_amount'], app.WEEKEND_SURCHARGE)
+        # Tanggal BELUM berubah
+        self.assertEqual(b2['visit_date'], wd)
+        # Bayar selisih
+        r3 = self._pay(code, token)
+        self.assertEqual(r3.status_code, 200)
+        b3 = r3.get_json()
+        self.assertEqual(b3['visit_date'], we)
+        self.assertEqual(b3['unit_price'], d['price'] + app.WEEKEND_SURCHARGE)
+        self.assertEqual(b3['total'], d['price'] + app.WEEKEND_SURCHARGE)
+        self.assertIsNone(b3.get('pending_visit_date'))
+
+    @patch('mailer.send_email_background')
+    def test_35_pending_price_change_expires_old_date_kept(self, mock_send):
+        """Pending ubah tanggal kedaluwarsa: tanggal lama tetap berlaku."""
+        token = self._get_token('we3@test.com', 'We Three')
+        wd, we = self._find_weekday_and_weekend(20)
+        dests = client.get('/api/destinations').get_json()
+        d = next(x for x in dests if x['price'] > 0 and not x['price_weekend'])
+        r = client.post('/api/bookings', json={
+            'destination_id': d['id'], 'visit_date': wd, 'qty': 1,
+            'name': 'We Three', 'email': 'we3@test.com'
+        }, headers={'Authorization': f'Bearer {token}'})
+        code = r.get_json()['code']
+        self._pay(code, token)
+        # Minta ubah ke weekend (lebih mahal)
+        r2 = client.put(f'/api/bookings/{code}', json={'visit_date': we},
+                        headers={'Authorization': f'Bearer {token}'})
+        self.assertTrue(r2.get_json().get('requires_payment'))
+        # Set expires_at ke masa lalu
+        import sqlite3 as sq
+        c = sq.connect('wisata.db')
+        past = (datetime.datetime.now() - datetime.timedelta(minutes=1)).isoformat(timespec='seconds')
+        c.execute("UPDATE bookings SET expires_at=? WHERE code=?", (past, code))
+        c.commit(); c.close()
+        # Akses booking -> expire_stale akan membuang pending
+        b = client.get(f'/api/bookings/{code}', headers={'Authorization': f'Bearer {token}'}).get_json()
+        self.assertEqual(b['visit_date'], wd)
+        self.assertIsNone(b.get('pending_visit_date'))
+        self.assertEqual(b['total'], d['price'])
+
+    @patch('mailer.send_email_background')
+    def test_36_calendar_has_is_weekend_and_weekend_note(self, mock_send):
+        dests = client.get('/api/destinations').get_json()
+        d = next(x for x in dests if x['price'] > 0 and not x['price_weekend'])
+        wd, we = self._find_weekday_and_weekend()
+        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        wd_day = next(x for x in cal if x['date'] == wd)
+        we_day = next(x for x in cal if x['date'] == we)
+        self.assertIn('is_weekend', wd_day)
+        self.assertIn('is_weekend', we_day)
+        self.assertFalse(wd_day['is_weekend'])
+        self.assertTrue(we_day['is_weekend'])
+        # weekend_note untuk destinasi tanpa price_weekend
+        self.assertIsNone(wd_day.get('weekend_note'))
+        self.assertIn('Akhir pekan', we_day.get('weekend_note', ''))
+        # Untuk Gembira Loka (ada price_weekend): note = 'Tarif akhir pekan'
+        cal5 = client.get('/api/destinations/5/calendar').get_json()
+        we5 = next(x for x in cal5 if x['date'] == we)
+        self.assertEqual(we5.get('weekend_note'), 'Tarif akhir pekan')
 
 
 if __name__ == '__main__':
