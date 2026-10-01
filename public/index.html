@@ -2164,10 +2164,10 @@
         };
 
         function requireLogin(fn, role) {
-            return async function () {
+            return async function (...args) {
                 if (!_state.user) { sessionStorage.setItem('afterLogin', location.hash); location.hash = '#/masuk'; return; }
                 if (role && _state.user.role !== role && !isAdmin()) { toast('Akses ditolak', 'error'); location.hash = '#/'; return; }
-                return fn();
+                return fn(...args);
             };
         }
         function isAdmin() { return _state.user && _state.user.role === 'admin'; }
@@ -2859,15 +2859,40 @@
            BOOKINGS VIEW
         ═══════════════════════════════════════════════════════ */
         async function viewBookings() {
-            app.innerHTML = `<div class="page-wrapper"><div class="section" style="padding-top:calc(var(--nav-h)+2rem)"><h1 class="h1" style="margin-bottom:2rem">Pesanan Saya</h1><div id="bList">${Array(3).fill(skeletonCard()).join('')}</div></div></div>`;
+            app.innerHTML = `<div class="page-wrapper"><div class="section" style="padding-top:calc(var(--nav-h)+2rem)">
+      <h1 class="h1" style="margin-bottom:1rem">Pesanan Saya</h1>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;max-width:420px">
+        <input class="form-input" id="bSearch" type="text" placeholder="Cari kode booking (mis. WJ-XXXX)..." style="flex:1" aria-label="Cari kode booking">
+        <button class="btn btn-primary" id="bSearchBtn" onclick="searchBookings()" aria-label="Cari">🔍</button>
+      </div>
+      <div id="bList">${Array(3).fill(skeletonCard()).join('')}</div>
+    </div></div>`;
+            document.getElementById('bSearch')?.addEventListener('keydown', e => { if (e.key === 'Enter') searchBookings(); });
+            await loadBookings();
+        }
+
+        async function loadBookings(q) {
+            const el = document.getElementById('bList');
+            if (!el) return;
+            el.innerHTML = Array(3).fill(skeletonCard()).join('');
             try {
-                const bookings = await api('/bookings');
-                const el = document.getElementById('bList');
+                const path = q ? `/bookings?code=${encodeURIComponent(q)}` : '/bookings';
+                const bookings = await api(path);
                 if (!el) return;
-                if (!bookings.length) { el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎫</div><h3>Belum ada pesanan</h3><p>Mulai jelajahi wisata dan buat pesanan pertamamu!</p><button class="btn btn-primary" style="margin-top:1rem" onclick="location.hash='#/'">Jelajahi Sekarang</button></div>`; return; }
+                if (!bookings.length) {
+                    el.innerHTML = q
+                        ? `<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>Kode booking tidak ditemukan</h3><p>Periksa kembali kode booking <strong>${esc(q)}</strong></p></div>`
+                        : `<div class="empty-state"><div class="empty-state-icon">🎫</div><h3>Belum ada pesanan</h3><p>Mulai jelajahi wisata dan buat pesanan pertamamu!</p><button class="btn btn-primary" style="margin-top:1rem" onclick="location.hash='#/'">Jelajahi Sekarang</button></div>`;
+                    return;
+                }
                 el.innerHTML = `<div class="ticket-list">${bookings.map(b => ticketCard(b)).join('')}</div>`;
             } catch (e) { showError(); }
         }
+
+        window.searchBookings = function () {
+            const q = (document.getElementById('bSearch')?.value || '').trim();
+            loadBookings(q || undefined);
+        };
 
         function ticketCard(b) {
             const photo = (b.destination?.name ? `/static/img/${b.destination_id || 1}-1.jpg` : '/static/img/1-1.jpg');
