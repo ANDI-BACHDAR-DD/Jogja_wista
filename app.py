@@ -336,15 +336,33 @@ def update_booking(code):
     if not r: return err('Booking tidak ditemukan', 404)
     if not can_modify_booking(r): return err('Akses ditolak', 403)
     if r['status'] != 'PAID': return err('Booking tidak dapat diubah', 409)
-    b = request.get_json(force=True); d = db().execute('SELECT * FROM destinations WHERE id=?', (r['destination_id'],)).fetchone()
-    visit, e = parse_visit(b.get('visit_date', r['visit_date']))
-    if e: return err(e)
-    qty = int(b.get('qty', r['qty']))
-    if not 1 <= qty <= 20: return err('Jumlah tiket 1-20')
-    if sold(d['id'], visit.isoformat(), code) + qty > d['daily_quota']: return err('Kuota tidak mencukupi', 409)
-    up = unit_price(d, visit, r['tier'])
-    db().execute('UPDATE bookings SET visit_date=?,qty=?,unit_price=?,total=?,name=?,phone=?,updated_at=? WHERE code=?',
-        (visit.isoformat(), qty, up, up * qty, b.get('name', r['name']), b.get('phone', r['phone']), datetime.now().isoformat(timespec='seconds'), code))
+    b = request.get_json(silent=True) or {}
+    # Hanya visit_date yang boleh dikirim
+    extra = set(b.keys()) - {'visit_date'}
+    if extra:
+        return err('Hanya tanggal kunjungan yang dapat diubah')
+    if 'visit_date' not in b:
+        return err('visit_date wajib diisi')
+    d = db().execute('SELECT * FROM destinations WHERE id=?', (r['destination_id'],)).fetchone()
+    # Tanggal lama dan baru harus >= besok
+    tomorrow = date.today() + timedelta(days=1)
+    try:
+        old_visit = date.fromisoformat(r['visit_date'])
+    except Exception:
+        return err('Tanggal lama tidak valid')
+    try:
+        new_visit = date.fromisoformat(b['visit_date'])
+    except Exception:
+        return err('Tanggal kunjungan tidak valid (format YYYY-MM-DD)')
+    if old_visit < tomorrow:
+        return err('Pesanan pada hari-H tidak dapat diubah tanggalnya')
+    if new_visit < tomorrow:
+        return err('Tanggal baru tidak boleh hari ini atau lampau')
+    if sold(d['id'], new_visit.isoformat(), code) + r['qty'] > d['daily_quota']:
+        return err('Kuota tidak mencukupi', 409)
+    # Harga TERKUNCI: unit_price dan total tidak berubah
+    db().execute('UPDATE bookings SET visit_date=?,updated_at=? WHERE code=?',
+        (new_visit.isoformat(), datetime.now().isoformat(timespec='seconds'), code))
     db().commit()
     import mailer
     b_resp = get_booking(code).json

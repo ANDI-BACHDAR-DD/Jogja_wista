@@ -199,6 +199,135 @@ class TestBookings(unittest.TestCase):
         r = client.delete(f'/api/destinations/{cid}', headers=ADMIN_HEADERS)
         self.assertEqual(r.status_code, 204)
 
+    def _book_paid(self, token, days=10, qty=1):
+        """Helper: buat booking PAID, return (code, old_visit, unit_price, total)."""
+        dests = client.get('/api/destinations').get_json()
+        d = dests[0]
+        visit = self._future_date(days)
+        r = client.post('/api/bookings', json={
+            'destination_id': d['id'], 'visit_date': visit, 'qty': qty,
+            'name': 'Chg Test', 'email': 'chg@test.com'
+        }, headers={'Authorization': f'Bearer {token}'})
+        assert r.status_code == 201, r.get_json()
+        data = r.get_json()
+        return data['code'], visit, data['unit_price'], data['total']
+
+    @patch('mailer.send_email_background')
+    def test_07_change_date_success(self, mock_send):
+        token = self._get_token('chg1@test.com', 'Chg One')
+        code, old_visit, up, total = self._book_paid(token, days=10)
+        new_visit = self._future_date(12)
+        r = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
+                       headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r.status_code, 200)
+        data = r.get_json()
+        self.assertEqual(data['visit_date'], new_visit)
+        # Harga terkunci
+        self.assertEqual(data['unit_price'], up)
+        self.assertEqual(data['total'], total)
+        # Email perubahan terkirim
+        self.assertTrue(mock_send.called)
+
+    @patch('mailer.send_email_background')
+    def test_08_change_date_with_qty_rejected(self, mock_send):
+        token = self._get_token('chg2@test.com', 'Chg Two')
+        code, *_ = self._book_paid(token, days=10)
+        new_visit = self._future_date(12)
+        r = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit, 'qty': 5},
+                       headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('Hanya tanggal', r.get_json()['error'])
+
+    @patch('mailer.send_email_background')
+    def test_09_change_date_with_name_phone_rejected(self, mock_send):
+        token = self._get_token('chg3@test.com', 'Chg Three')
+        code, *_ = self._book_paid(token, days=10)
+        new_visit = self._future_date(12)
+        for extra in [{'name': 'X'}, {'phone': '0812'}, {'tier': 'plus'}]:
+            body = {'visit_date': new_visit}; body.update(extra)
+            r = client.put(f'/api/bookings/{code}', json=body,
+                           headers={'Authorization': f'Bearer {token}'})
+            self.assertEqual(r.status_code, 400)
+
+    @patch('mailer.send_email_background')
+    def test_10_change_date_past_or_today_rejected(self, mock_send):
+        token = self._get_token('chg4@test.com', 'Chg Four')
+        code, *_ = self._book_paid(token, days=10)
+        today = datetime.date.today().isoformat()
+        yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        for bad in [today, yesterday]:
+            r = client.put(f'/api/bookings/{code}', json={'visit_date': bad},
+                           headers={'Authorization': f'Bearer {token}'})
+            self.assertEqual(r.status_code, 400)
+
+    @patch('mailer.send_email_background')
+    def test_11_change_date_old_visit_today_rejected(self, mock_send):
+        # Booking visit_date = hari ini bisa dibuat, tapi TIDAK bisa diubah
+        token = self._get_token('chg5@test.com', 'Chg Five')
+        dests = client.get('/api/destinations').get_json()
+        today = datetime.date.today().isoformat()
+        r = client.post('/api/bookings', json={
+            'destination_id': dests[0]['id'], 'visit_date': today, 'qty': 1,
+            'name': 'Chg Five', 'email': 'chg5@test.com'
+        }, headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r.status_code, 201)
+        code = r.get_json()['code']
+        # Ubah tanggal: old_visit = hari ini < besok -> 400
+        new_visit = self._future_date(3)
+        r2 = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
+                        headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 400)
+
+    @patch('mailer.send_email_background')
+    def test_12_change_date_other_user_forbidden(self, mock_send):
+        token = self._get_token('chg6@test.com', 'Chg Six')
+        code, *_ = self._book_paid(token, days=10)
+        token2 = self._get_token('chg7@test.com', 'Chg Seven')
+        new_visit = self._future_date(12)
+        r = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
+                       headers={'Authorization': f'Bearer {token2}'})
+        self.assertEqual(r.status_code, 403)
+
+    @patch('mailer.send_email_background')
+    def test_13_change_date_refunded_rejected(self, mock_send):
+        token = self._get_token('chg8@test.com', 'Chg Eight')
+        code, *_ = self._book_paid(token, days=10)
+        r = client.post(f'/api/bookings/{code}/refund', json={'reason': 'test'},
+                        headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r.status_code, 200)
+        new_visit = self._future_date(12)
+        r2 = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
+                        headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 409)
+
+    @patch('mailer.send_email_background')
+    def test_14_change_date_admin_ok(self, mock_send):
+        token = self._get_token('chg9@test.com', 'Chg Nine')
+        code, *_ = self._book_paid(token, days=10)
+        new_visit = self._future_date(14)
+        r = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
+                       headers=ADMIN_HEADERS)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()['visit_date'], new_visit)
+
+    @patch('mailer.send_email_background')
+    def test_15_change_date_same_day_tomorrow_boundary(self, mock_send):
+        """Tanggal besok = valid untuk old & new."""
+        token = self._get_token('chg10@test.com', 'Chg Ten')
+        dests = client.get('/api/destinations').get_json()
+        tomorrow = self._future_date(1)
+        r = client.post('/api/bookings', json={
+            'destination_id': dests[0]['id'], 'visit_date': tomorrow, 'qty': 1,
+            'name': 'Chg Ten', 'email': 'chg10@test.com'
+        }, headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r.status_code, 201)
+        code = r.get_json()['code']
+        day_after = self._future_date(2)
+        r2 = client.put(f'/api/bookings/{code}', json={'visit_date': day_after},
+                        headers={'Authorization': f'Bearer {token}'})
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.get_json()['visit_date'], day_after)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

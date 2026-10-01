@@ -2703,35 +2703,99 @@
       </div>
       <div class="ticket-actions">
         ${b.status === 'PAID' ? `
-          <button class="btn btn-ghost btn-sm" onclick="showChangeModal('${esc(b.code)}', '${esc(b.visit_date)}', ${b.qty})">📅 Ubah</button>
+          <button class="btn btn-ghost btn-sm" onclick="showChangeModal('${esc(b.code)}', ${b.destination_id})">📅 Ubah tanggal</button>
           <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="showRefundModal('${esc(b.code)}', ${b.total}, ${pct})">${pct}% Refund</button>
         ` : `<span style="font-size:0.78rem;color:var(--text-3)">Refund: ${fmt(b.refund_amount)}</span>`}
       </div>
     </div>`;
         }
 
-        window.showChangeModal = function (code, visitDate, qty) {
-            openModal('Ubah Jadwal & Jumlah', `
-    <div class="form-group">
-      <label class="form-label" for="newDate">Tanggal Baru</label>
-      <input class="form-input" id="newDate" type="date" value="${esc(visitDate)}" min="${new Date().toISOString().split('T')[0]}" aria-label="Tanggal baru">
+        let _changeModal = null;
+
+        window.showChangeModal = function (code, destId) {
+            _changeModal = { code, destId, selected: null, year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+            openModal('Ubah Tanggal Kunjungan', `
+    <p style="color:var(--text-2);font-size:0.9rem;margin-bottom:1rem">Pilih tanggal kunjungan baru. Harga tetap; jika tanggal baru lebih mahal, Anda akan diarahkan ke pembayaran selisih.</p>
+    <div class="cal-header">
+      <button class="cal-btn" id="cmPrev" aria-label="Bulan sebelumnya">‹</button>
+      <span class="cal-month-label" id="cmMonth"></span>
+      <button class="cal-btn" id="cmNext" aria-label="Bulan berikutnya">›</button>
     </div>
-    <div class="form-group">
-      <label class="form-label" for="newQty">Jumlah Tiket Baru</label>
-      <input class="form-input" id="newQty" type="number" min="1" max="20" value="${qty}" aria-label="Jumlah tiket baru">
+    <div class="cal-grid" id="cmGrid"></div>
+    <div id="cmSelected" style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-2)"></div>
+    <div style="display:flex;gap:0.75rem;margin-top:1.25rem">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Batal</button>
+      <button class="btn btn-primary" style="flex:2" id="cmSave" disabled onclick="doChangeBooking()">Simpan tanggal baru</button>
     </div>
-    <button class="btn btn-primary" style="width:100%;margin-top:0.5rem" onclick="doChangeBooking('${esc(code)}')">Simpan Perubahan</button>
   `);
+            document.getElementById('cmPrev').onclick = () => changeCMonth(-1);
+            document.getElementById('cmNext').onclick = () => changeCMonth(1);
+            loadCMonth();
         };
 
-        window.doChangeBooking = async function (code) {
-            const date = document.getElementById('newDate').value;
-            const qty = Number(document.getElementById('newQty').value);
-            if (!date) { toast('Tanggal wajib diisi', 'error'); return; }
+        function changeCMonth(d) {
+            if (!_changeModal) return;
+            let { year, month } = _changeModal;
+            month += d;
+            if (month < 1) { month = 12; year--; }
+            if (month > 12) { month = 1; year++; }
+            _changeModal.year = year; _changeModal.month = month;
+            loadCMonth();
+        }
+
+        async function loadCMonth() {
+            if (!_changeModal) return;
+            const { destId, year, month } = _changeModal;
+            const label = document.getElementById('cmMonth');
+            const grid = document.getElementById('cmGrid');
+            if (!grid) return;
             try {
-                await api(`/bookings/${code}`, { method: 'PUT', body: JSON.stringify({ visit_date: date, qty }) });
-                closeModal(); toast('Jadwal berhasil diubah ✓', 'success'); viewBookings();
-            } catch (e) { toast(e.message, 'error'); }
+                const cal = await api(`/destinations/${destId}/calendar?month=${year}-${String(month).padStart(2, '0')}`);
+                if (label) label.textContent = new Date(year, month - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                const dow = new Date(year, month - 1, 1).getDay();
+                const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div class="cal-day-hdr">${d}</div>`).join('');
+                const blanks = Array(dow).fill('<div></div>').join('');
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+                const cells = cal.map(day => {
+                    const dd = new Date(day.date + 'T00:00');
+                    const isPast = day.past || dd < tomorrow;
+                    const isSoldOut = day.remaining === 0;
+                    const isSelected = _changeModal.selected === day.date;
+                    let cls = 'cal-day';
+                    if (isPast) cls += ' past';
+                    else if (isSoldOut) cls += ' sold-out';
+                    else if (isSelected) cls += ' selected';
+                    const clickable = !isPast && !isSoldOut;
+                    return `<div class="${cls}" ${clickable ? `onclick="selectChangeDate('${day.date}',${day.price})"` : ''} role="${clickable ? 'button' : 'presentation'}">${dd.getDate()}<span class="cal-day-price">${day.price ? (day.price / 1000).toFixed(0) + 'k' : ''}</span></div>`;
+                }).join('');
+                grid.innerHTML = days + blanks + cells;
+            } catch (e) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-3);padding:1rem">Gagal memuat kalender</div>';
+            }
+        }
+
+        window.selectChangeDate = function (dateStr, price) {
+            if (!_changeModal) return;
+            _changeModal.selected = dateStr;
+            const sel = document.getElementById('cmSelected');
+            if (sel) sel.textContent = `Tanggal dipilih: ${fmtDate(dateStr)}`;
+            const btn = document.getElementById('cmSave');
+            if (btn) btn.disabled = false;
+            loadCMonth();
+        };
+
+        window.doChangeBooking = async function () {
+            if (!_changeModal || !_changeModal.selected) { toast('Pilih tanggal baru dulu', 'error'); return; }
+            const btn = document.getElementById('cmSave');
+            if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
+            try {
+                await api(`/bookings/${_changeModal.code}`, { method: 'PUT', body: JSON.stringify({ visit_date: _changeModal.selected }) });
+                closeModal(); toast('Tanggal kunjungan berhasil diubah ✓', 'success'); viewBookings();
+            } catch (e) {
+                toast(e.message, 'error');
+                if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
+            }
         };
 
         window.showRefundModal = function (code, total, pct) {
