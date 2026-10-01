@@ -1,0 +1,961 @@
+{
+  "regions": [
+    {
+      "slug": "kota-yogyakarta",
+      "name": "Kota Yogyakarta",
+      "tagline": "Situs sejarah, budaya kerajaan, dan edukasi keluarga di pusat kota."
+    },
+    {
+      "slug": "kabupaten-sleman",
+      "name": "Kabupaten Sleman",
+      "tagline": "Candi purbakala dan petualangan di lereng Gunung Merapi."
+    },
+    {
+      "slug": "kabupaten-bantul",
+      "name": "Kabupaten Bantul",
+      "tagline": "Pantai pasir hitam, perbukitan pinus, dan sentra kerajinan."
+    },
+    {
+      "slug": "kabupaten-gunungkidul",
+      "name": "Kabupaten Gunungkidul",
+      "tagline": "Pantai pasir putih eksotis, gua vertikal, dan destinasi modern di tebing pantai."
+    },
+    {
+      "slug": "kabupaten-kulon-progo",
+      "name": "Kabupaten Kulon Progo",
+      "tagline": "Perbukitan Menoreh yang sejuk, air terjun berundak, dan ekowisata waduk."
+    }
+  ],
+  "destinations": [
+    {
+      "id": 1,
+      "region": "kota-yogyakarta",
+      "name": "Keraton Yogyakarta",
+      "description": "Keraton Yogyakarta adalah istana Kesultanan Yogyakarta yang dibangun Sultan Hamengkubuwono I pada tahun 1755 setelah Perjanjian Giyanti. Hingga kini keraton masih menjadi pusat pemerintahan adat dan budaya sekaligus tempat tinggal Sultan. Pengunjung dapat melihat arsitektur tradisional Jawa, pendopo, serta museum yang menyimpan pusaka, perlengkapan kerajaan, dan gamelan. Pada jadwal tertentu digelar pertunjukan seni seperti tari klasik, macapat, dan wayang, sehingga kunjungan terasa seperti menyelami tradisi Jawa yang masih hidup.",
+      "price_label": "Rp15.000",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/1-1.jpg",
+        "/static/img/1-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 2,
+      "region": "kota-yogyakarta",
+      "name": "Taman Sari (Istana Air)",
+      "description": "Taman Sari merupakan kompleks taman dan pesanggrahan milik Keraton Yogyakarta yang dibangun pada masa Sultan Hamengkubuwono I sekitar pertengahan abad ke-18. Dahulu tempat ini berfungsi sebagai tempat rekreasi, pemandian, dan pertahanan keluarga sultan. Daya tarik utamanya meliputi kolam pemandian (Umbul Pasiraman) dengan gerbang bergaya perpaduan Jawa dan Eropa, lorong-lorong bawah tanah, serta Sumur Gumuling, bangunan melingkar dua lantai yang dahulu berfungsi sebagai tempat ibadah. Lokasinya berdekatan dengan keraton sehingga mudah digabungkan dalam satu rute wisata.",
+      "price_label": "Rp15.000",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/2-1.jpg",
+        "/static/img/2-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 3,
+      "region": "kota-yogyakarta",
+      "name": "Museum Benteng Vredeburg",
+      "description": "Benteng Vredeburg dibangun Belanda pada abad ke-18 di dekat Keraton Yogyakarta, awalnya sebagai pos pertahanan dan pengawasan. Sejak diresmikan sebagai museum, bangunan ini menyimpan diorama dan koleksi yang menggambarkan perjuangan bangsa Indonesia dari masa perlawanan terhadap penjajah hingga masa kemerdekaan. Arsitektur bentengnya yang kokoh dengan halaman luas menjadikannya tempat belajar sejarah yang nyaman. Lokasinya strategis di ujung Malioboro, sehingga cocok dikunjungi bersama pelajar maupun keluarga.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/3-1.jpg",
+        "/static/img/3-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 4,
+      "region": "kota-yogyakarta",
+      "name": "Taman Pintar Yogyakarta",
+      "description": "Taman Pintar adalah wahana edukasi sains yang berlokasi di kawasan pusat kota, tidak jauh dari Malioboro dan Benteng Vredeburg. Pengunjung, terutama anak-anak dan pelajar, dapat belajar konsep sains dan teknologi secara interaktif lewat berbagai alat peraga, ruang pamer, dan area bermain edukatif. Setiap gedung memiliki tema dan tarif yang berbeda sehingga pengunjung bisa memilih sesuai minat. Tempat ini menjadi alternatif liburan keluarga yang menyenangkan sekaligus menambah wawasan.",
+      "price_label": "Rp12.000 \u2013 Rp20.000 (tergantung gedung/wahana)",
+      "price": 12000,
+      "price_max": 20000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/4-1.jpg",
+        "/static/img/4-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 5,
+      "region": "kota-yogyakarta",
+      "name": "Gembira Loka Zoo",
+      "description": "Gembira Loka Zoo adalah kebun binatang yang berada di dalam kota Yogyakarta dengan koleksi beragam satwa dari berbagai wilayah dunia. Taman ini dirancang sebagai tempat rekreasi keluarga yang dipadukan dengan edukasi konservasi, lengkap dengan area bermain anak dan wahana hiburan. Pengunjung dapat menikmati suasana taman yang rindang sambil melihat satwa dari dekat. Harga tiket berbeda antara hari kerja dan akhir pekan, sehingga waktu kunjungan dapat disesuaikan dengan anggaran.",
+      "price_label": "Rp60.000 (weekday) / Rp75.000 (weekend)",
+      "price": 60000,
+      "price_max": 0,
+      "price_weekend": 75000,
+      "photos": [
+        "/static/img/5-1.jpg",
+        "/static/img/5-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 6,
+      "region": "kota-yogyakarta",
+      "name": "Situs Warungboto",
+      "description": "Situs Warungboto adalah peninggalan pesanggrahan kerajaan pada masa Kesultanan Yogyakarta yang berada di wilayah Umbulharjo. Kawasan ini memiliki kolam pemandian, gerbang, dan lorong-lorong berarsitektur unik yang mengingatkan pada Taman Sari. Setelah dipugar, situs ini banyak dikunjungi wisatawan karena bentuk bangunannya fotogenik, terutama saat pagi dan sore hari. Tiket masuknya terjangkau sehingga cocok untuk wisata sejarah singkat sambil berfoto.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/6-1.jpg",
+        "/static/img/6-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 7,
+      "region": "kota-yogyakarta",
+      "name": "Museum Sonobudoyo",
+      "description": "Museum Sonobudoyo terletak di dekat Alun-Alun Utara dan menyimpan koleksi budaya Jawa yang cukup lengkap, mulai dari wayang, keris, topeng, batik, arca, hingga benda-benda etnografi dari berbagai daerah. Bangunannya bergaya arsitektur Jawa dan didirikan pada masa kolonial untuk melestarikan warisan budaya. Museum ini cocok untuk pelajar dan peneliti budaya yang ingin memahami tradisi Jawa. Pada waktu tertentu juga diadakan pertunjukan wayang kulit di area museum.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/7-1.jpg",
+        "/static/img/7-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 8,
+      "region": "kota-yogyakarta",
+      "name": "Taman Pelangi (Monjali)",
+      "description": "Taman Pelangi berada di kawasan Monumen Yogya Kembali (Monjali) dan dikenal sebagai wisata malam dengan ribuan lampu dan lampion berbentuk warna-warni. Suasananya semakin semarak saat malam hari, dengan beragam figur lampu, spot foto, dan wahana permainan anak. Tempat ini ramai dikunjungi keluarga dan pasangan yang mencari hiburan santai di malam hari. Harga tiket berbeda antara hari kerja dan akhir pekan.",
+      "price_label": "Rp15.000 (weekday) / Rp20.000 (weekend)",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 20000,
+      "photos": [
+        "/static/img/8-1.jpg",
+        "/static/img/8-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 9,
+      "region": "kota-yogyakarta",
+      "name": "Museum Kereta Keraton",
+      "description": "Museum Kereta Keraton menyimpan koleksi kereta kuda milik Keraton Yogyakarta yang dahulu digunakan untuk keperluan upacara, kunjungan kenegaraan, dan pengangkutan keluarga kerajaan. Setiap kereta memiliki nama, fungsi, dan sejarah tersendiri, dengan ukiran dan hiasan yang khas. Berkunjung ke sini memberi gambaran tentang kemegahan transportasi kerajaan pada masa lalu. Lokasinya berada di sekitar kawasan keraton sehingga mudah dijangkau.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/9-1.jpg",
+        "/static/img/9-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 10,
+      "region": "kabupaten-sleman",
+      "name": "Candi Prambanan",
+      "description": "Candi Prambanan adalah kompleks candi Hindu terbesar di Indonesia yang dibangun pada abad ke-9 dan telah ditetapkan sebagai Situs Warisan Dunia UNESCO. Kompleks ini didominasi tiga candi utama yang dipersembahkan bagi Trimurti, yaitu Brahma, Wisnu, dan Siwa, dengan Candi Siwa sebagai bangunan tertinggi. Dinding candi dihiasi relief kisah Ramayana yang sangat detail. Pada waktu tertentu digelar pertunjukan Sendratari Ramayana dengan latar candi, sehingga kunjungan menjadi pengalaman sejarah dan seni sekaligus.",
+      "price_label": "Rp50.000",
+      "price": 50000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/10-1.jpg",
+        "/static/img/10-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 11,
+      "region": "kabupaten-sleman",
+      "name": "Tebing Breksi",
+      "description": "Tebing Breksi adalah bekas area penambangan batu breksi yang kini disulap menjadi taman wisata dengan dinding tebing berukir motif dan relief. Dari bagian atas tebing, pengunjung dapat menikmati pemandangan hamparan Sleman dan Kota Yogyakarta, terutama saat matahari terbenam. Kawasan ini juga dilengkapi amfiteater dan area terbuka untuk pertunjukan atau acara. Lokasinya berdekatan dengan Candi Prambanan sehingga mudah digabungkan dalam satu rute wisata.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/11-1.jpg",
+        "/static/img/11-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 12,
+      "region": "kabupaten-sleman",
+      "name": "Candi Ijo",
+      "description": "Candi Ijo berdiri di atas bukit dan merupakan salah satu candi Hindu dengan lokasi tertinggi di Yogyakarta. Kompleks ini terdiri dari beberapa bangunan candi berundak yang dibangun pada masa Mataram Kuno. Selain nilai sejarahnya, tempat ini terkenal sebagai spot menikmati matahari terbenam dengan pemandangan lanskap perbukitan dan pesawat yang melintas di kejauhan. Suasananya tenang dan cocok untuk wisata sejarah sekaligus berfoto.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/12-1.jpg",
+        "/static/img/12-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 13,
+      "region": "kabupaten-sleman",
+      "name": "Keraton Ratu Boko",
+      "description": "Situs Ratu Boko berada di atas bukit dan diperkirakan merupakan kompleks istana atau permukiman pada masa Mataram Kuno sekitar abad ke-8. Peninggalan yang masih dapat dilihat meliputi gerbang utama, paseban, pendopo, kolam, dan area pembakaran. Dari lokasi yang tinggi ini, pengunjung dapat memandang Candi Prambanan dan hamparan sekitarnya, terutama pada waktu senja. Tempat ini cocok bagi yang menyukai sejarah sekaligus panorama.",
+      "price_label": "Rp40.000",
+      "price": 40000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/13-1.jpg",
+        "/static/img/13-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 14,
+      "region": "kabupaten-sleman",
+      "name": "Obelix Hills",
+      "description": "Obelix Hills adalah destinasi wisata bukit modern yang menawarkan pemandangan lanskap perbukitan dan matahari terbenam. Kawasan ini menyediakan beberapa spot foto, area santai, dan kafe sehingga cocok untuk menghabiskan sore hari. Suasananya ramai pada sore hingga malam, terutama pada akhir pekan. Harganya cukup terjangkau untuk wisata pemandangan bergaya kekinian.",
+      "price_label": "Rp20.000 \u2013 Rp25.000",
+      "price": 20000,
+      "price_max": 25000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/14-1.jpg",
+        "/static/img/14-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 15,
+      "region": "kabupaten-sleman",
+      "name": "The Lost World Castle",
+      "description": "The Lost World Castle adalah destinasi wisata dengan bangunan bergaya kastil di kawasan lereng Merapi. Bangunan unik dan latar alam yang asri menjadikannya populer sebagai lokasi berfoto. Pengunjung dapat menikmati pemandangan sekitar sambil bersantai. Tempat ini sering menjadi bagian dari rute wisata Merapi bersama kegiatan lava tour.",
+      "price_label": "Rp30.000",
+      "price": 30000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/15-1.jpg",
+        "/static/img/15-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 16,
+      "region": "kabupaten-sleman",
+      "name": "Merapi Park Yogyakarta",
+      "description": "Merapi Park adalah taman wisata di kawasan lereng Merapi yang menampilkan replika berbagai landmark dunia sebagai spot foto. Selain area foto, tersedia juga wahana dan area bermain yang cocok untuk keluarga. Udara di kawasan ini relatif sejuk karena berada di daerah dataran tinggi. Destinasi ini menawarkan keseruan berkeliling dunia tanpa harus bepergian jauh.",
+      "price_label": "Rp35.000",
+      "price": 35000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/16-1.jpg",
+        "/static/img/16-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 17,
+      "region": "kabupaten-sleman",
+      "name": "Suraloka Interactive Zoo",
+      "description": "Suraloka Interactive Zoo adalah kebun binatang mini yang menekankan interaksi langsung antara pengunjung dan satwa. Pengunjung dapat memberi makan dan melihat berbagai hewan dari dekat, sehingga cocok bagi anak-anak yang ingin belajar tentang satwa. Suasananya lebih santai dibanding kebun binatang besar. Harga tiket bervariasi tergantung paket atau wahana.",
+      "price_label": "Rp30.000 \u2013 Rp50.000",
+      "price": 30000,
+      "price_max": 50000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/17-1.jpg",
+        "/static/img/17-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 18,
+      "region": "kabupaten-sleman",
+      "name": "Candi Sambisari",
+      "description": "Candi Sambisari adalah candi Hindu bercorak Siwa dari masa Mataram Kuno yang ditemukan tertimbun material vulkanik. Karena itulah candi ini terletak di dalam cekungan dan pengunjung harus turun beberapa meter untuk melihatnya. Kompleks candi terdiri dari candi induk dan beberapa candi perwara yang tertata rapi. Suasananya tenang dan tiketnya sangat terjangkau.",
+      "price_label": "Rp6.000",
+      "price": 6000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/18-1.jpg",
+        "/static/img/18-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 19,
+      "region": "kabupaten-sleman",
+      "name": "Blue Lagoon Jogja",
+      "description": "Blue Lagoon Jogja adalah kolam alami yang bersumber dari mata air dengan air jernih berwarna kebiruan. Pengunjung dapat berenang, bermain air, atau sekadar bersantai di area sekitarnya yang asri. Tempat ini cocok untuk keluarga dan wisatawan yang mencari kesejukan alami. Tiket masuknya murah sehingga ramai dikunjungi pada akhir pekan.",
+      "price_label": "Rp15.000",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/19-1.jpg",
+        "/static/img/19-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 20,
+      "region": "kabupaten-sleman",
+      "name": "Kaliurang Lava Tour (Jeep)",
+      "description": "Lava Tour adalah wisata petualangan menggunakan jip untuk menyusuri jalur lahar dan kawasan terdampak erupsi Gunung Merapi. Rute tur biasanya melewati beberapa titik seperti bekas permukiman, bunker, dan bebatuan sisa aliran lahar, dengan pemandu yang menjelaskan sejarah erupsi. Tarif dihitung per jip dengan kapasitas maksimal empat orang, sehingga lebih hemat bila dibagi rombongan. Pilihan paket menentukan rute dan durasi.",
+      "price_label": "Rp350.000 \u2013 Rp650.000 (per jeep, maks. 4 orang)",
+      "price": 350000,
+      "price_max": 650000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/20-1.jpg",
+        "/static/img/20-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 21,
+      "region": "kabupaten-sleman",
+      "name": "Studio Alam Gamplong",
+      "description": "Studio Alam Gamplong adalah studio film alam terbuka yang dibangun sebagai lokasi syuting film-film sejarah Indonesia. Pengunjung dapat melihat set bangunan bergaya tempo dulu dan berfoto dengan latar suasana masa lampau. Tersedia juga wahana kereta dan museum dengan tarif tambahan. Tempat ini cocok bagi penggemar film dan wisata bertema sejarah.",
+      "price_label": "Bayar sukarela (wahana kereta/museum mulai Rp10.000)",
+      "price": 0,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/21-1.jpg",
+        "/static/img/21-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 22,
+      "region": "kabupaten-sleman",
+      "name": "Waterboom Jogja (Eks Jogja Bay)",
+      "description": "Waterboom Jogja adalah taman rekreasi air yang menawarkan berbagai seluncuran, kolam, dan wahana air untuk semua usia. Tempat ini cocok bagi keluarga yang mencari hiburan seru di bawah terik matahari. Fasilitasnya mencakup area bermain anak, gazebo, dan pusat kuliner. Sebaiknya datang lebih awal agar dapat menikmati banyak wahana.",
+      "price_label": "Rp100.000",
+      "price": 100000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/22-1.jpg",
+        "/static/img/22-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 23,
+      "region": "kabupaten-sleman",
+      "name": "Bunker Kaliadem Merapi",
+      "description": "Bunker Kaliadem adalah bunker perlindungan yang dibangun di kawasan Gunung Merapi dan menjadi saksi dampak erupsi. Tempat ini menjadi bagian dari wisata sejarah Merapi karena menyimpan cerita tentang bencana dan upaya mitigasinya. Dari kawasan ini pengunjung dapat menikmati panorama Merapi dari jarak dekat. Retribusinya murah dan sering dikunjungi bersama rute lava tour.",
+      "price_label": "Rp5.000 (retribusi kawasan)",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/23-1.jpg",
+        "/static/img/23-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 24,
+      "region": "kabupaten-bantul",
+      "name": "Pantai Parangtritis & Depok",
+      "description": "Pantai Parangtritis adalah pantai paling terkenal di Yogyakarta dengan hamparan pasir gelap, ombak besar, dan suasana matahari terbenam yang indah. Tempat ini juga lekat dengan legenda dan budaya setempat serta menjadi lokasi berbagai aktivitas seperti naik andong dan ATV. Tidak jauh dari sana, Pantai Depok terkenal dengan pasar ikan dan warung seafood segar. Tiket masuknya murah sehingga cocok untuk liburan keluarga.",
+      "price_label": "Rp15.000",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/24-1.jpg",
+        "/static/img/24-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 25,
+      "region": "kabupaten-bantul",
+      "name": "Gumuk Pasir Parangkusumo",
+      "description": "Gumuk Pasir Parangkusumo adalah bentang alam bukit pasir yang jarang ditemukan di Indonesia. Hamparan pasirnya membentuk gundukan seperti gurun mini yang menarik untuk foto dan aktivitas sandboarding. Lokasinya berada di kawasan Parangtritis sehingga mudah dikombinasikan dengan kunjungan ke pantai. Kawasan ini juga menarik bagi yang tertarik pada fenomena alam.",
+      "price_label": "Rp10.000 (tiket kawasan)",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/25-1.jpg",
+        "/static/img/25-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 26,
+      "region": "kabupaten-bantul",
+      "name": "Hutan Pinus Pengger",
+      "description": "Hutan Pinus Pengger adalah kawasan hutan di perbukitan yang menawarkan pemandangan Kota Yogyakarta dari ketinggian. Pohon-pohon pinus yang rindang menciptakan suasana sejuk dan cocok untuk bersantai. Pengunjung dapat berfoto di beberapa spot yang disediakan. Suasananya paling menarik pada sore hari saat lampu kota mulai menyala.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/26-1.jpg",
+        "/static/img/26-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 27,
+      "region": "kabupaten-bantul",
+      "name": "Kebun Buah Mangunan",
+      "description": "Kebun Buah Mangunan berada di perbukitan Dlingo dan terkenal dengan pemandangan lembah Sungai Oya dari ketinggian. Pada pagi hari, pengunjung yang beruntung dapat menyaksikan lautan kabut dan matahari terbit dari tempat ini. Selain pemandangan, terdapat spot foto dan area yang teduh untuk bersantai. Tiketnya murah sehingga populer bagi wisatawan yang berburu sunrise.",
+      "price_label": "Rp7.500 \u2013 Rp10.000",
+      "price": 7500,
+      "price_max": 10000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/27-1.jpg",
+        "/static/img/27-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 28,
+      "region": "kabupaten-bantul",
+      "name": "Hutan Pinus Mangunan",
+      "description": "Hutan Pinus Mangunan adalah kawasan hutan pinus yang luas di perbukitan Bantul dengan udara sejuk dan suasana tenang. Deretan pohon pinus yang menjulang membentuk pemandangan yang fotogenik. Tersedia spot foto dan area bersantai yang nyaman untuk keluarga. Lokasinya berdekatan dengan Kebun Buah Mangunan sehingga mudah dikunjungi bersamaan.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/28-1.jpg",
+        "/static/img/28-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 29,
+      "region": "kabupaten-bantul",
+      "name": "Puncak Becici",
+      "description": "Puncak Becici adalah puncak bukit dengan hutan pinus di sekitarnya yang menawarkan pemandangan alam perbukitan Bantul. Tempat ini cocok untuk menikmati sunrise, berfoto, atau berkemah ringan. Udara yang sejuk dan suasana yang asri membuatnya cocok untuk melepas penat. Tiket masuknya sangat terjangkau.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/29-1.jpg",
+        "/static/img/29-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 30,
+      "region": "kabupaten-bantul",
+      "name": "Pantai Goa Cemara",
+      "description": "Pantai Goa Cemara memiliki barisan pohon cemara udang yang membentuk suasana teduh mirip lorong di tepi pantai. Pantainya relatif tenang sehingga cocok untuk bersantai dan piknik. Pengunjung dapat menikmati ombak, berfoto di bawah pepohonan, atau mencicipi kuliner sekitar. Waktu terbaik berkunjung adalah sore hari saat cuaca tidak terlalu panas.",
+      "price_label": "Rp15.000",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/30-1.jpg",
+        "/static/img/30-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 31,
+      "region": "kabupaten-bantul",
+      "name": "Pantai Baru & Pantai Pandansimo",
+      "description": "Pantai Baru dan Pantai Pandansimo berada di pesisir selatan Bantul dengan pasir gelap dan ombak khas Samudra Hindia. Kawasan ini terkenal lebih lengang dibanding Parangtritis sehingga cocok untuk menikmati suasana pantai yang tenang. Pengunjung dapat bermain di tepi pantai, menikmati angin laut, dan mencicipi hidangan laut di warung sekitar. Perlu berhati-hati saat bermain air karena ombak cukup besar.",
+      "price_label": "Rp15.000",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/31-1.jpg",
+        "/static/img/31-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 32,
+      "region": "kabupaten-bantul",
+      "name": "Goa Selarong",
+      "description": "Goa Selarong adalah gua bersejarah yang pernah menjadi markas Pangeran Diponegoro dalam Perang Jawa. Kawasan ini terdiri dari dua gua utama di lingkungan yang rindang dengan suasana yang sejuk. Selain menjadi tempat wisata sejarah, area sekitarnya nyaman untuk berjalan santai dan piknik. Cocok untuk pelajar dan peminat sejarah perjuangan.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/32-1.jpg",
+        "/static/img/32-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 33,
+      "region": "kabupaten-bantul",
+      "name": "Tebing Watu Mabur",
+      "description": "Tebing Watu Mabur adalah destinasi wisata tebing di perbukitan Bantul dengan pemandangan lanskap hijau dan kaki langit yang luas. Tempat ini populer sebagai spot foto dan menikmati matahari terbit maupun terbenam. Akses dan fasilitasnya sederhana dengan tiket yang terjangkau. Cocok bagi wisatawan yang menyukai pemandangan alam terbuka.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/33-1.jpg",
+        "/static/img/33-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 34,
+      "region": "kabupaten-bantul",
+      "name": "Pintu Langit Dahromo",
+      "description": "Pintu Langit Dahromo adalah spot wisata alam di ketinggian dengan latar pemandangan lembah dan perbukitan. Salah satu daya tariknya adalah spot foto berbentuk pintu yang seolah membuka ke arah langit. Pengunjung dapat menikmati suasana sejuk dan pemandangan luas sekaligus. Tiket masuk murah sehingga ramai dikunjungi anak muda.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/34-1.jpg",
+        "/static/img/34-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 35,
+      "region": "kabupaten-bantul",
+      "name": "Seribu Batu Songgo Langit",
+      "description": "Seribu Batu Songgo Langit adalah kawasan wisata di perbukitan Bantul yang menampilkan susunan batu dan bukit dengan pemandangan sekitar. Tempat ini menawarkan spot foto, area bersantai, dan suasana sejuk khas dataran tinggi. Pengunjung dapat menikmati panorama alam dan suasana pedesaan. Tiketnya murah dan cocok untuk wisata singkat.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/35-1.jpg",
+        "/static/img/35-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 36,
+      "region": "kabupaten-bantul",
+      "name": "Little Tokyo Jogja (Litto)",
+      "description": "Little Tokyo Jogja atau Litto adalah destinasi wisata bertema Jepang dengan berbagai spot foto bernuansa negeri sakura. Suasananya dilengkapi ornamen Jepang, area bersantai, dan pilihan kuliner. Tiket masuk dapat ditukar dengan voucher makanan sehingga terasa lebih hemat. Tempat ini cocok bagi yang ingin merasakan suasana Jepang tanpa pergi ke luar negeri.",
+      "price_label": "Rp30.000 (dapat ditukar voucher makanan)",
+      "price": 30000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/36-1.jpg",
+        "/static/img/36-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 37,
+      "region": "kabupaten-gunungkidul",
+      "name": "Kawasan Pantai Pasir Putih (Baron, Krakal, Drini, Indrayanti, dll)",
+      "description": "Kawasan pantai selatan Gunungkidul memiliki deretan pantai berpasir putih seperti Baron, Krakal, Drini, dan Indrayanti yang berdekatan satu sama lain. Ombak, tebing karang, dan air laut yang jernih menciptakan pemandangan khas yang berbeda dari pantai di Bantul. Pengunjung dapat bermain di pantai, menikmati kuliner laut, dan melihat matahari terbenam. Tiket terusan dikenakan per pos retribusi.",
+      "price_label": "Rp15.000 (tiket terusan per pos retribusi)",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/37-1.jpg",
+        "/static/img/37-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 38,
+      "region": "kabupaten-gunungkidul",
+      "name": "Goa Pindul (Cave Tubing)",
+      "description": "Goa Pindul adalah wisata petualangan menyusuri gua dan sungai bawah tanah menggunakan ban pelampung (cave tubing). Pengunjung didampingi pemandu yang menjelaskan formasi stalaktit dan stalagmit sepanjang perjalanan. Aktivitas ini aman dan cocok untuk pemula dengan menggunakan perlengkapan keselamatan. Selain biaya tubing, dikenakan retribusi kawasan.",
+      "price_label": "Rp40.000 \u2013 Rp50.000 (+ retribusi kawasan Rp10.000)",
+      "price": 10000,
+      "price_max": 50000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/38-1.jpg",
+        "/static/img/38-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 39,
+      "region": "kabupaten-gunungkidul",
+      "name": "HeHa Sky View",
+      "description": "HeHa Sky View adalah destinasi wisata bukit yang menawarkan pemandangan Kota Yogyakarta dan hamparan sekitarnya dari ketinggian. Tempat ini dilengkapi kafe dan spot foto yang tertata modern. Suasana malamnya sangat populer karena gemerlap lampu kota tampak dari atas. Cocok bagi wisatawan yang ingin bersantai sambil menikmati panorama.",
+      "price_label": "Rp20.000",
+      "price": 20000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/39-1.jpg",
+        "/static/img/39-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 40,
+      "region": "kabupaten-gunungkidul",
+      "name": "HeHa Ocean View",
+      "description": "HeHa Ocean View adalah destinasi wisata modern yang berada di atas tebing pantai dengan pemandangan lautan lepas. Kawasan ini dilengkapi spot foto, kafe, dan area bersantai dengan konsep kekinian. Pemandangan terbaik biasanya pada sore hari saat matahari terbenam. Harga tiket bervariasi tergantung paket atau fasilitas.",
+      "price_label": "Rp30.000 \u2013 Rp50.000",
+      "price": 30000,
+      "price_max": 50000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/40-1.jpg",
+        "/static/img/40-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 41,
+      "region": "kabupaten-gunungkidul",
+      "name": "Goa Jomblang",
+      "description": "Goa Jomblang adalah gua vertikal yang terkenal dengan fenomena cahaya dari langit (light of heaven) yang masuk melalui lubang di atas gua. Pengunjung turun menggunakan tali dengan perlengkapan dan pemandu profesional, lalu menyusuri dasar gua yang lembap dan hijau. Paket kunjungan sudah termasuk sewa peralatan caving vertikal, pemandu, dan makan siang. Tempat ini cocok bagi pencinta petualangan yang siap secara fisik.",
+      "price_label": "Rp500.000 (termasuk sewa alat caving vertikal, pemandu, dan makan siang)",
+      "price": 500000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/41-1.jpg",
+        "/static/img/41-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 42,
+      "region": "kabupaten-gunungkidul",
+      "name": "Pantai Timang",
+      "description": "Pantai Timang terkenal dengan gugusan karang besar dan ombak kuat. Daya tarik utamanya adalah gondola ekstrem yang menyeberangkan wisatawan ke pulau karang di tengah laut. Bagi yang tidak berani naik gondola, pengunjung tetap dapat menikmati pemandangan pantai dengan tiket akses biasa. Keselamatan perlu diperhatikan karena kondisi ombak yang kuat.",
+      "price_label": "Rp10.000 (akses pantai) / Rp150.000 \u2013 Rp200.000 (gondola ekstrem)",
+      "price": 10000,
+      "price_max": 200000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/42-1.jpg",
+        "/static/img/42-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 43,
+      "region": "kabupaten-gunungkidul",
+      "name": "Gunung Api Purba Nglanggeran",
+      "description": "Gunung Api Purba Nglanggeran adalah sisa gunung api yang aktif jutaan tahun lalu dan kini menjadi kawasan ekowisata. Pengunjung dapat mendaki dengan jalur yang cukup landai hingga puncak untuk menikmati pemandangan sunrise dan sunset. Kawasan ini juga dikelola oleh masyarakat setempat sehingga sarat nuansa desa wisata. Cocok bagi pemula yang ingin mendaki santai.",
+      "price_label": "Rp15.000",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/43-1.jpg",
+        "/static/img/43-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 44,
+      "region": "kabupaten-gunungkidul",
+      "name": "Drini Park",
+      "description": "Drini Park adalah destinasi wisata di kawasan pantai Gunungkidul yang menawarkan area santai dan pemandangan laut. Tempat ini dilengkapi spot foto dan fasilitas untuk keluarga. Pengunjung dapat menikmati pantai sekaligus area taman yang tertata. Harga tiket terjangkau dan mudah digabungkan dengan kunjungan ke pantai sekitarnya.",
+      "price_label": "Rp15.000 \u2013 Rp20.000",
+      "price": 15000,
+      "price_max": 20000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/44-1.jpg",
+        "/static/img/44-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 45,
+      "region": "kabupaten-gunungkidul",
+      "name": "Jungwok Blue Ocean",
+      "description": "Jungwok Blue Ocean adalah pantai berkarang dengan air laut berwarna biru dan pemandangan tebing di sekelilingnya. Pengunjung dapat menikmati suasana pantai yang lebih tenang, berfoto di karang, dan bermain air di area yang aman. Tempat ini cocok bagi yang menyukai keindahan pantai dengan karakter berbeda dari pantai berpasir. Perlu berhati-hati saat berjalan di atas karang.",
+      "price_label": "Rp25.000",
+      "price": 25000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/45-1.jpg",
+        "/static/img/45-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 46,
+      "region": "kabupaten-gunungkidul",
+      "name": "Stone Valley By HeHa",
+      "description": "Stone Valley By HeHa adalah kawasan wisata dengan lanskap lembah dan bebatuan yang dipadukan dengan fasilitas modern. Pengunjung dapat berfoto, bersantai, dan menikmati suasana alam terbuka. Konsepnya cocok untuk wisata keluarga dan anak muda. Tiket masuknya relatif terjangkau.",
+      "price_label": "Rp20.000",
+      "price": 20000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/46-1.jpg",
+        "/static/img/46-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 47,
+      "region": "kabupaten-gunungkidul",
+      "name": "Pantai Sadranan (Snorkeling)",
+      "description": "Pantai Sadranan adalah pantai berpasir putih dengan terumbu karang dangkal di dekat bibir pantai sehingga cocok untuk snorkeling. Air lautnya relatif jernih dan ombaknya tidak terlalu besar di area tertentu. Pengunjung dapat menyewa peralatan snorkeling di lokasi. Aktivitas ini cocok dilakukan pada pagi atau siang hari saat air jernih.",
+      "price_label": "Rp15.000 (sewa alat snorkeling Rp25.000)",
+      "price": 15000,
+      "price_max": 25000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/47-1.jpg",
+        "/static/img/47-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 48,
+      "region": "kabupaten-gunungkidul",
+      "name": "Air Terjun Sri Gethuk",
+      "description": "Air Terjun Sri Gethuk adalah air terjun yang mengalir di lembah dengan tebing hijau di sekitarnya. Pengunjung dapat menyeberang sungai menggunakan rakit atau perahu untuk mencapai lokasi. Tiket masuk sudah termasuk area Goa Rancang Kencono. Suasananya sejuk dan cocok untuk berfoto maupun bersantai.",
+      "price_label": "Rp15.000 (termasuk area Goa Rancang Kencono)",
+      "price": 15000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/48-1.jpg",
+        "/static/img/48-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 49,
+      "region": "kabupaten-gunungkidul",
+      "name": "Embung Nglanggeran",
+      "description": "Embung Nglanggeran adalah waduk kecil buatan di puncak bukit yang berfungsi menampung air dan kini menjadi objek wisata. Pemandangan sekitarnya berupa perbukitan dan bebatuan khas kawasan Nglanggeran. Tempat ini populer untuk menyaksikan matahari terbit dan terbenam. Tiket murah dan sering dikunjungi bersama Gunung Api Purba Nglanggeran.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/49-1.jpg",
+        "/static/img/49-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 50,
+      "region": "kabupaten-kulon-progo",
+      "name": "Waduk Sermo",
+      "description": "Waduk Sermo adalah waduk buatan yang menyediakan air bagi wilayah Kulon Progo dan sekaligus menjadi destinasi wisata. Hamparan air yang tenang dengan latar perbukitan menciptakan suasana asri. Pengunjung dapat bersantai, memancing, atau menikmati pemandangan dari tepian waduk. Lokasinya berdekatan dengan Kalibiru sehingga mudah dikombinasikan.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/50-1.jpg",
+        "/static/img/50-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 51,
+      "region": "kabupaten-kulon-progo",
+      "name": "Wisata Alam Kalibiru",
+      "description": "Kalibiru adalah wisata alam di perbukitan yang dikelola masyarakat dan menawarkan panorama Waduk Sermo dari ketinggian. Daya tarik utamanya adalah menara pohon untuk berfoto dengan latar pemandangan waduk dan perbukitan. Terdapat juga aktivitas seperti flying fox dan area bersantai di hutan. Tiket masuk terpisah dengan biaya berfoto di menara pohon.",
+      "price_label": "Rp10.000 (foto di menara pohon tambah Rp10.000 \u2013 Rp15.000)",
+      "price": 10000,
+      "price_max": 15000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/51-1.jpg",
+        "/static/img/51-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 52,
+      "region": "kabupaten-kulon-progo",
+      "name": "Tumpeng Menoreh",
+      "description": "Tumpeng Menoreh adalah destinasi wisata bukit di kawasan Menoreh yang menonjolkan konsep bangunan dan pemandangan alam khas pegunungan. Pengunjung dapat menikmati panorama perbukitan sambil bersantai dan menikmati hidangan. Tiket masuk sudah termasuk voucher makan atau minum sehingga cukup hemat. Cocok untuk wisata santai bersama keluarga atau teman.",
+      "price_label": "Rp50.000 (termasuk voucher makan/minum)",
+      "price": 50000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/52-1.jpg",
+        "/static/img/52-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 53,
+      "region": "kabupaten-kulon-progo",
+      "name": "Air Terjun Kedung Pedut",
+      "description": "Air Terjun Kedung Pedut memiliki aliran air jernih yang jatuh ke kolam berwarna kehijauan di tengah suasana alam yang asri. Tempat ini cocok untuk berfoto, menikmati kesejukan, dan bersantai di tepi sungai. Suasana hutan di sekitarnya menambah kesan alami. Akses menuju lokasi cukup menarik karena melewati kawasan pedesaan.",
+      "price_label": "Rp11.000",
+      "price": 11000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/53-1.jpg",
+        "/static/img/53-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 54,
+      "region": "kabupaten-kulon-progo",
+      "name": "Ekowisata Sungai Mudal",
+      "description": "Sungai Mudal adalah ekowisata dengan aliran sungai berair jernih kebiruan yang bersumber dari mata air alami. Terdapat air terjun kecil dan kolam yang bisa digunakan untuk bermain air. Suasananya sejuk dengan pepohonan rindang di sekitarnya. Kawasan ini dikelola untuk pelestarian alam sekaligus rekreasi keluarga.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/54-1.jpg",
+        "/static/img/54-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 55,
+      "region": "kabupaten-kulon-progo",
+      "name": "Kebun Teh Nglinggo",
+      "description": "Kebun Teh Nglinggo adalah perkebunan teh di dataran tinggi Menoreh dengan udara sejuk dan pemandangan hamparan hijau yang menenangkan. Pengunjung dapat berjalan-jalan di sela kebun, berfoto, atau mencicipi teh lokal. Suasananya cocok untuk melepas penat dari hiruk pikuk kota. Tiket masuknya murah.",
+      "price_label": "Rp8.000",
+      "price": 8000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/55-1.jpg",
+        "/static/img/55-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 56,
+      "region": "kabupaten-kulon-progo",
+      "name": "Air Terjun Kembang Soka",
+      "description": "Air Terjun Kembang Soka adalah air terjun bertingkat yang berada di tengah hutan yang sejuk. Aliran airnya membentuk beberapa kolam alami yang menarik untuk berfoto dan menikmati suasana alam. Pengunjung perlu berjalan kaki menuju lokasi dengan jalur yang cukup menyenangkan. Tempat ini cocok bagi pencinta wisata alam.",
+      "price_label": "Rp10.000",
+      "price": 10000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/56-1.jpg",
+        "/static/img/56-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 57,
+      "region": "kabupaten-kulon-progo",
+      "name": "Pantai Glagah",
+      "description": "Pantai Glagah adalah pantai di pesisir Kulon Progo dengan pemecah ombak berbentuk tumpukan batu dan laguna yang tenang untuk bermain. Lokasinya berdekatan dengan Bandara Internasional Yogyakarta sehingga mudah diakses. Pengunjung dapat menikmati pemandangan pantai, kuliner ikan, serta suasana matahari terbenam. Tiket masuk sangat terjangkau.",
+      "price_label": "Rp6.000",
+      "price": 6000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/57-1.jpg",
+        "/static/img/57-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 58,
+      "region": "kabupaten-kulon-progo",
+      "name": "Puncak Suroloyo",
+      "description": "Puncak Suroloyo adalah salah satu puncak di perbukitan Menoreh dengan pemandangan luas ke arah pegunungan dan lembah. Dari sini, pengunjung dapat menikmati matahari terbit dan hamparan kabut pada pagi hari. Suasananya tenang dan sejuk sehingga cocok untuk menikmati alam. Tiket masuknya murah.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/58-1.jpg",
+        "/static/img/58-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 59,
+      "region": "kabupaten-kulon-progo",
+      "name": "Menoreh Dreamland",
+      "description": "Menoreh Dreamland adalah destinasi wisata bukit di kawasan Menoreh dengan spot foto dan pemandangan lembah yang luas. Pengunjung dapat bersantai, berfoto, dan menikmati udara sejuk. Fasilitas yang tersedia mendukung kunjungan keluarga maupun anak muda. Harga tiket berkisar sesuai fasilitas yang digunakan.",
+      "price_label": "Rp15.000 \u2013 Rp20.000",
+      "price": 15000,
+      "price_max": 20000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/59-1.jpg",
+        "/static/img/59-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 60,
+      "region": "kabupaten-kulon-progo",
+      "name": "Nglinggo Adventure Price (Jeep)",
+      "description": "Wisata jip di kawasan Nglinggo menawarkan pengalaman menjelajah jalur perbukitan Menoreh dengan medan yang menantang. Rute biasanya melewati kebun teh, pemandangan lembah, dan desa-desa di dataran tinggi. Tarif dihitung per jip sehingga lebih hemat bila dibagi rombongan. Pilihan rute dan durasi menentukan harga akhir.",
+      "price_label": "Rp400.000 \u2013 Rp700.000 (per jeep)",
+      "price": 400000,
+      "price_max": 700000,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/60-1.jpg",
+        "/static/img/60-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 61,
+      "region": "kabupaten-kulon-progo",
+      "name": "Gua Kiskendo",
+      "description": "Gua Kiskendo adalah gua alami di Kulon Progo yang dikenal dengan cerita legenda dan formasi batuan di dalamnya. Pengunjung dapat menelusuri gua dengan panduan dan menikmati suasana khas gua yang lembap dan gelap. Kawasan sekitarnya juga menyimpan pesona alam yang asri. Tiket masuknya sangat terjangkau.",
+      "price_label": "Rp6.000",
+      "price": 6000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/61-1.jpg",
+        "/static/img/61-2.jpg"
+      ],
+      "daily_quota": 500
+    },
+    {
+      "id": 62,
+      "region": "kabupaten-kulon-progo",
+      "name": "Puncak Dipowono",
+      "description": "Puncak Dipowono adalah wisata puncak bukit di Kulon Progo yang menawarkan panorama perbukitan dan hamparan alam di bawahnya. Tempat ini cocok untuk menikmati sunrise atau sunset sambil bersantai. Suasananya masih alami dan cukup tenang. Tiket masuknya murah sehingga cocok untuk wisata singkat.",
+      "price_label": "Rp5.000",
+      "price": 5000,
+      "price_max": 0,
+      "price_weekend": 0,
+      "photos": [
+        "/static/img/62-1.jpg",
+        "/static/img/62-2.jpg"
+      ],
+      "daily_quota": 500
+    }
+  ]
+}

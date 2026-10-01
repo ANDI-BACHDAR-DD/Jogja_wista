@@ -1,0 +1,5 @@
+venv/
+.env
+wisata.db
+__pycache__/
+*.pyc

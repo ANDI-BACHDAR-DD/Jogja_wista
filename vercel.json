@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app.py": {
+      "excludeFiles": "{venv/**,static/**,tests/**,test_*.py,*_backup*.py,*_backup*.html,data/*.xlsx,__pycache__/**}"
+    }
+  }
+}

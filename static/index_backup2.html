@@ -1,0 +1,3012 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wisata Jogja – Jelajahi Yogyakarta</title>
+    <meta name="description"
+        content="Temukan dan pesan tiket objek wisata terbaik di Yogyakarta. 62 destinasi dari Kota Yogyakarta, Sleman, Bantul, Gunungkidul, dan Kulon Progo.">
+    <style>
+        /* ═══════════════════════════════════════════════════════
+   DESIGN TOKENS & RESET
+═══════════════════════════════════════════════════════ */
+        :root {
+            /* Palet Terracotta-Emas Jogja */
+            --clr-primary: #c8622a;
+            --clr-primary-dark: #a84e1f;
+            --clr-primary-light: #e8845a;
+            --clr-gold: #d4a843;
+            --clr-gold-light: #f0c96a;
+
+            /* Surfaces Mode Terang */
+            --bg: #faf8f4;
+            --bg-2: #f2ede4;
+            --bg-card: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.72);
+            --border: rgba(0, 0, 0, 0.08);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.10);
+            --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.14);
+
+            /* Text */
+            --text: #1a1612;
+            --text-2: #5a4e42;
+            --text-3: #9a8e82;
+            --text-inv: #ffffff;
+
+            /* Status */
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #d97706;
+
+            /* Radii */
+            --r-sm: 10px;
+            --r-md: 16px;
+            --r-lg: 24px;
+            --r-xl: 32px;
+            --r-full: 999px;
+
+            /* Misc */
+            --nav-h: 68px;
+            --transition: 0.22s cubic-bezier(.4, 0, .2, 1);
+            --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        }
+
+        [data-theme="dark"] {
+            --bg: #12100e;
+            --bg-2: #1c1814;
+            --bg-card: #221e1a;
+            --bg-glass: rgba(22, 18, 14, 0.80);
+            --border: rgba(255, 255, 255, 0.08);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.30);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.40);
+            --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.50);
+            --text: #f5f0ea;
+            --text-2: #c5bdb4;
+            --text-3: #7a7068;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+        }
+
+        a {
+            color: var(--clr-primary);
+            text-decoration: none;
+        }
+
+        button {
+            cursor: pointer;
+            font-family: inherit;
+            border: none;
+            background: none;
+        }
+
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--clr-primary);
+            outline-offset: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   TYPOGRAPHY
+═══════════════════════════════════════════════════════ */
+        .display {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1.05;
+        }
+
+        .h1 {
+            font-size: clamp(1.75rem, 4vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .h2 {
+            font-size: clamp(1.4rem, 3vw, 2rem);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        .body-sm {
+            font-size: 0.875rem;
+        }
+
+        .body-xs {
+            font-size: 0.78rem;
+        }
+
+        .label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0.65rem 1.4rem;
+            border-radius: var(--r-full);
+            font-weight: 600;
+            font-size: 0.925rem;
+            min-height: 44px;
+            transition: all var(--transition);
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--clr-primary);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(200, 98, 42, 0.35);
+        }
+
+        .btn-primary:hover {
+            background: var(--clr-primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(200, 98, 42, 0.45);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text);
+            border: 1.5px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-2);
+            border-color: var(--text-3);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+            transform: translateY(-1px);
+        }
+
+        .btn-sm {
+            padding: 0.4rem 1rem;
+            font-size: 0.825rem;
+            min-height: 36px;
+        }
+
+        .btn-lg {
+            padding: 0.9rem 2rem;
+            font-size: 1rem;
+        }
+
+        .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-loading {
+            pointer-events: none;
+        }
+
+        .btn-loading::after {
+            content: '';
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn-icon {
+            padding: 0.55rem;
+            border-radius: var(--r-full);
+            min-height: 40px;
+            min-width: 40px;
+            justify-content: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   NAVBAR
+═══════════════════════════════════════════════════════ */
+        #navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            height: var(--nav-h);
+            display: flex;
+            align-items: center;
+            padding: 0 clamp(1rem, 4vw, 2.5rem);
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid var(--border);
+            transition: background var(--transition), box-shadow var(--transition);
+        }
+
+        #navbar.scrolled {
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .nav-logo svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .nav-logo-text {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text);
+        }
+
+        .nav-logo-text span {
+            color: var(--clr-primary);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin: 0 auto 0 2rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 0.9rem;
+            border-radius: var(--r-full);
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-2);
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: var(--bg-2);
+            color: var(--text);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+
+        .btn-theme {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--r-full);
+            background: var(--bg-2);
+            color: var(--text);
+            font-size: 1rem;
+            transition: all var(--transition);
+            border: 1.5px solid var(--border);
+        }
+
+        .btn-theme:hover {
+            background: var(--bg-card);
+            transform: rotate(20deg);
+        }
+
+        /* Avatar Dropdown */
+        .user-menu {
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--r-full);
+            background: linear-gradient(135deg, var(--clr-primary), var(--clr-gold));
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform var(--transition);
+            border: 2px solid var(--bg-card);
+            box-shadow: 0 2px 8px rgba(200, 98, 42, 0.35);
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            min-width: 200px;
+            background: var(--bg-card);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px);
+            transition: all 0.18s ease;
+            z-index: 200;
+        }
+
+        .user-dropdown.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            padding: 1rem 1.1rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dropdown-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .dropdown-email {
+            font-size: 0.8rem;
+            color: var(--text-3);
+            margin-top: 2px;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.7rem 1.1rem;
+            color: var(--text);
+            font-size: 0.9rem;
+            transition: background var(--transition);
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-2);
+        }
+
+        .dropdown-item.danger {
+            color: var(--danger);
+        }
+
+        /* Hamburger */
+        .btn-hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            padding: 6px;
+        }
+
+        .btn-hamburger span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: var(--text);
+            border-radius: 2px;
+            transition: all 0.22s;
+        }
+
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: var(--nav-h);
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-card);
+            z-index: 99;
+            overflow-y: auto;
+            padding: 1.5rem;
+            transform: translateX(-100%);
+            transition: transform 0.28s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .mobile-menu.open {
+            transform: translateX(0);
+        }
+
+        .mobile-nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .mobile-nav-link {
+            padding: 0.9rem 1rem;
+            border-radius: var(--r-md);
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .mobile-nav-link:hover {
+            background: var(--bg-2);
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .btn-hamburger {
+                display: flex;
+            }
+
+            .mobile-menu {
+                display: block;
+            }
+
+            #navbar .btn-primary,
+            #navbar .btn-ghost {
+                display: none;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════════════ */
+        #hero {
+            position: relative;
+            height: 100svh;
+            min-height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-top: calc(-1 * var(--nav-h));
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: -40px;
+            background: url('/static/img/1-1.jpg') center/cover no-repeat;
+            transform: translateY(0);
+            will-change: transform;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.6) 60%, rgba(0, 0, 0, 0.85) 100%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 0 1.5rem;
+            max-width: 800px;
+            animation: fadeUp 0.9s ease both;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: var(--r-full);
+            font-size: 0.825rem;
+            font-weight: 500;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero-title {
+            color: #fff;
+            margin-bottom: 1rem;
+        }
+
+        .hero-sub {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            margin-bottom: 2.5rem;
+        }
+
+        .hero-search {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: #fff;
+            border-radius: var(--r-full);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .hero-search input {
+            flex: 1;
+            padding: 1rem 1.4rem;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            background: transparent;
+            color: #1a1612;
+        }
+
+        .hero-search button {
+            padding: 0.85rem 1.6rem;
+            background: var(--clr-primary);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: background var(--transition);
+            border-radius: var(--r-full);
+            margin: 5px;
+        }
+
+        .hero-search button:hover {
+            background: var(--clr-primary-dark);
+        }
+
+        .hero-scroll {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        .hero-scroll svg {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateX(-50%) translateY(0)
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(6px)
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   SECTIONS & LAYOUT
+═══════════════════════════════════════════════════════ */
+        .section {
+            padding: clamp(3rem, 7vw, 5rem) clamp(1rem, 4vw, 2.5rem);
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .page-wrapper {
+            padding-top: var(--nav-h);
+            min-height: 100vh;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   REGION CHIPS & CARDS
+═══════════════════════════════════════════════════════ */
+        .chip-bar {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .chip-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip {
+            flex-shrink: 0;
+            padding: 0.5rem 1.2rem;
+            border-radius: var(--r-full);
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: var(--bg-card);
+            border: 1.5px solid var(--border);
+            color: var(--text-2);
+            cursor: pointer;
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .chip:hover {
+            border-color: var(--clr-primary);
+            color: var(--clr-primary);
+        }
+
+        .chip.active {
+            background: var(--clr-primary);
+            border-color: var(--clr-primary);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(200, 98, 42, 0.35);
+        }
+
+        .region-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1.5rem;
+        }
+
+        .region-card {
+            position: relative;
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            aspect-ratio: 4/3;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            transition: transform var(--transition), box-shadow var(--transition);
+        }
+
+        .region-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .region-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .region-card:hover img {
+            transform: scale(1.06);
+        }
+
+        .region-card-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, transparent 55%);
+        }
+
+        .region-card-text {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1.1rem;
+        }
+
+        .region-card-name {
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .region-card-tagline {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.78rem;
+            margin-top: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   DESTINATION CARDS
+═══════════════════════════════════════════════════════ */
+        .dest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .dest-card {
+            background: var(--bg-card);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: transform var(--transition), box-shadow var(--transition);
+            position: relative;
+            opacity: 0;
+            transform: translateY(24px);
+            animation: none;
+        }
+
+        .dest-card.visible {
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .dest-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .dest-card-img {
+            position: relative;
+            aspect-ratio: 3/4;
+            overflow: hidden;
+        }
+
+        .dest-card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .dest-card:hover .dest-card-img img {
+            transform: scale(1.07);
+        }
+
+        .dest-card-badge {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.62);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: var(--r-full);
+            font-size: 0.775rem;
+            font-weight: 600;
+        }
+
+        .dest-card-fav {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--r-full);
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .dest-card-fav:hover,
+        .dest-card-fav.active {
+            background: var(--danger);
+        }
+
+        .dest-card-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent 50%);
+            opacity: 0;
+            transition: opacity var(--transition);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 1rem;
+        }
+
+        .dest-card:hover .dest-card-overlay {
+            opacity: 1;
+        }
+
+        .dest-card-body {
+            padding: 1rem 1.1rem;
+        }
+
+        .dest-card-name {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .dest-card-region {
+            font-size: 0.8rem;
+            color: var(--clr-primary);
+            font-weight: 500;
+        }
+
+        /* Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg) 50%, var(--bg-2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--r-sm);
+        }
+
+        @keyframes shimmer {
+            to {
+                background-position: -200% 0;
+            }
+        }
+
+        .skeleton-card {
+            background: var(--bg-card);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .skeleton-card .sk-img {
+            aspect-ratio: 3/4;
+        }
+
+        .skeleton-card .sk-body {
+            padding: 1rem;
+        }
+
+        .skeleton-card .sk-line {
+            height: 14px;
+            border-radius: var(--r-sm);
+            margin-bottom: 8px;
+        }
+
+        .skeleton-card .sk-line.short {
+            width: 60%;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   DESTINATION DETAIL
+═══════════════════════════════════════════════════════ */
+        .detail-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 2.5rem;
+            align-items: start;
+        }
+
+        .detail-gallery {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .detail-gallery img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            border-radius: var(--r-lg);
+            cursor: pointer;
+            transition: transform var(--transition);
+        }
+
+        .detail-gallery img:first-child {
+            grid-column: 1 / -1;
+            aspect-ratio: 16/9;
+        }
+
+        .detail-gallery img:hover {
+            transform: scale(1.01);
+        }
+
+        .detail-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: var(--r-full);
+            background: var(--bg-2);
+            color: var(--clr-primary);
+            font-weight: 600;
+            font-size: 0.825rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-title {
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-price {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--clr-primary);
+            margin-bottom: 1.25rem;
+        }
+
+        .detail-desc {
+            color: var(--text-2);
+            line-height: 1.75;
+        }
+
+        /* Booking Panel */
+        .booking-panel {
+            background: var(--bg-card);
+            border-radius: var(--r-xl);
+            padding: 1.75rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            position: sticky;
+            top: calc(var(--nav-h) + 1.5rem);
+        }
+
+        .stepper {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.75rem;
+        }
+
+        .step {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: var(--bg-2);
+            color: var(--text-3);
+            flex-shrink: 0;
+            transition: all var(--transition);
+        }
+
+        .step.active .step-num {
+            background: var(--clr-primary);
+            color: #fff;
+        }
+
+        .step.done .step-num {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background: var(--border);
+            margin: 0 6px;
+        }
+
+        .step.done .step-line {
+            background: var(--success);
+        }
+
+        .step-label {
+            display: none;
+        }
+
+        /* Kalender Kustom */
+        .cal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .cal-month-label {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .cal-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .cal-btn:hover {
+            background: var(--bg-2);
+            color: var(--clr-primary);
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+
+        .cal-day-hdr {
+            text-align: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-3);
+            padding: 4px 0;
+        }
+
+        .cal-day {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: var(--r-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            min-height: 36px;
+        }
+
+        .cal-day:hover:not(.past):not(.sold-out) {
+            background: var(--bg-2);
+        }
+
+        .cal-day.today {
+            border: 2px solid var(--clr-primary);
+            color: var(--clr-primary);
+            font-weight: 700;
+        }
+
+        .cal-day.weekend {
+            color: var(--clr-primary-light);
+        }
+
+        .cal-day.selected {
+            background: var(--clr-primary) !important;
+            color: #fff !important;
+        }
+
+        .cal-day.past,
+        .cal-day.sold-out {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .cal-day-price {
+            font-size: 0.52rem;
+            color: var(--text-3);
+            margin-top: 1px;
+            line-height: 1;
+        }
+
+        .cal-day.selected .cal-day-price {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .cal-day.weekend .cal-day-price {
+            color: var(--clr-primary-light);
+        }
+
+        /* Qty Stepper */
+        .qty-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .qty-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-2);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .qty-btn:hover {
+            background: var(--clr-primary);
+            color: #fff;
+        }
+
+        .qty-val {
+            font-weight: 700;
+            font-size: 1.1rem;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        /* Price Summary */
+        .price-summary {
+            background: var(--bg-2);
+            border-radius: var(--r-md);
+            padding: 1rem;
+            margin: 1.25rem 0;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-2);
+        }
+
+        .price-row:last-child {
+            margin: 0;
+            padding-top: 0.6rem;
+            border-top: 1px solid var(--border);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text);
+        }
+
+        .price-total-val {
+            color: var(--clr-primary);
+            font-size: 1.2rem;
+            font-weight: 800;
+            transition: all 0.3s ease;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   FORM INPUTS
+═══════════════════════════════════════════════════════ */
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-2);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            border-radius: var(--r-md);
+            color: var(--text);
+            font-size: 0.925rem;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            min-height: 44px;
+        }
+
+        .form-input:focus {
+            border-color: var(--clr-primary);
+            box-shadow: 0 0 0 3px rgba(200, 98, 42, 0.15);
+            outline: none;
+        }
+
+        .form-input.error {
+            border-color: var(--danger);
+        }
+
+        .form-error {
+            font-size: 0.8rem;
+            color: var(--danger);
+            margin-top: 4px;
+        }
+
+        .form-input-wrap {
+            position: relative;
+        }
+
+        .form-input-wrap .form-input {
+            padding-right: 2.8rem;
+        }
+
+        .input-eye {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-3);
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+
+        /* Password strength */
+        .pwd-strength {
+            margin-top: 6px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .pwd-bar {
+            flex: 1;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--border);
+            transition: background 0.3s;
+        }
+
+        .pwd-bar.weak {
+            background: var(--danger);
+        }
+
+        .pwd-bar.fair {
+            background: var(--warning);
+        }
+
+        .pwd-bar.strong {
+            background: var(--success);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   AUTH SPLIT SCREEN
+═══════════════════════════════════════════════════════ */
+        .auth-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        .auth-left {
+            position: relative;
+            overflow: hidden;
+            background: #1a1612;
+        }
+
+        .auth-left img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.6;
+        }
+
+        .auth-left-content {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 3rem;
+        }
+
+        .auth-quote {
+            color: #fff;
+            font-size: 1.8rem;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-bottom: 1rem;
+            letter-spacing: -0.03em;
+        }
+
+        .auth-quote-sub {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.95rem;
+        }
+
+        .auth-right {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: clamp(2rem, 6vw, 4rem);
+            overflow-y: auto;
+        }
+
+        .auth-logo-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2.5rem;
+            font-weight: 800;
+            font-size: 1.15rem;
+            letter-spacing: -0.03em;
+            color: var(--text);
+        }
+
+        .auth-logo-link span {
+            color: var(--clr-primary);
+        }
+
+        .auth-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 0.35rem;
+            letter-spacing: -0.03em;
+        }
+
+        .auth-sub {
+            color: var(--text-3);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .auth-switch {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-3);
+        }
+
+        .auth-switch a {
+            color: var(--clr-primary);
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .auth-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .auth-left {
+                display: none;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   TICKET / BOOKING CARDS
+═══════════════════════════════════════════════════════ */
+        .ticket-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .ticket-card {
+            background: var(--bg-card);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            grid-template-columns: 100px 1fr auto;
+            transition: box-shadow var(--transition);
+        }
+
+        .ticket-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .ticket-img {
+            width: 100px;
+            aspect-ratio: 1;
+            object-fit: cover;
+        }
+
+        .ticket-body {
+            padding: 1rem 1.25rem;
+        }
+
+        .ticket-dest {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .ticket-meta {
+            font-size: 0.82rem;
+            color: var(--text-3);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .ticket-code {
+            font-size: 0.82rem;
+            font-family: monospace;
+            color: var(--clr-primary);
+            font-weight: 700;
+        }
+
+        .ticket-actions {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: var(--r-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-paid {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-refunded {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        [data-theme="dark"] .badge-paid {
+            background: #14532d;
+            color: #4ade80;
+        }
+
+        [data-theme="dark"] .badge-refunded {
+            background: #450a0a;
+            color: #f87171;
+        }
+
+        /* E-Ticket Success */
+        .eticket {
+            background: var(--bg-card);
+            border-radius: var(--r-xl);
+            max-width: 420px;
+            margin: 0 auto;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .eticket-top {
+            background: linear-gradient(135deg, var(--clr-primary), var(--clr-gold));
+            padding: 2rem;
+            text-align: center;
+            color: #fff;
+        }
+
+        .eticket-code {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+        }
+
+        .eticket-body {
+            padding: 1.75rem;
+        }
+
+        .eticket-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.6rem 0;
+            border-bottom: 1px dashed var(--border);
+            font-size: 0.9rem;
+        }
+
+        .eticket-row:last-child {
+            border: none;
+        }
+
+        .eticket-label {
+            color: var(--text-3);
+        }
+
+        .eticket-val {
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* Checkmark animation */
+        .check-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: #dcfce7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+
+        .check-circle svg {
+            animation: drawCheck 0.5s ease 0.2s both;
+        }
+
+        @keyframes drawCheck {
+            from {
+                stroke-dashoffset: 100;
+            }
+
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   ADMIN
+═══════════════════════════════════════════════════════ */
+        .admin-table-wrap {
+            overflow-x: auto;
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead th {
+            padding: 0.9rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-3);
+            background: var(--bg-2);
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 0.85rem 1rem;
+            border-top: 1px solid var(--border);
+            vertical-align: middle;
+            color: var(--text);
+        }
+
+        tbody tr:hover {
+            background: var(--bg-2);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════════════ */
+        .modal-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.22s;
+        }
+
+        .modal-bg.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--r-xl);
+            padding: 2rem;
+            width: 100%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            transform: scale(0.95);
+            transition: transform 0.22s ease;
+        }
+
+        .modal-bg.open .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   LIGHTBOX
+═══════════════════════════════════════════════════════ */
+        #lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 600;
+            background: rgba(0, 0, 0, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.22s;
+        }
+
+        #lightbox.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: var(--r-lg);
+            object-fit: contain;
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+        #toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-card);
+            color: var(--text);
+            padding: 0.8rem 1.4rem;
+            border-radius: var(--r-full);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-weight: 500;
+            max-width: 420px;
+            text-align: center;
+            animation: toastIn 0.35s cubic-bezier(.34, 1.56, .64, 1) both;
+            pointer-events: auto;
+        }
+
+        .toast.exit {
+            animation: toastOut 0.3s ease both;
+        }
+
+        .toast-success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast-error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .toast-info {
+            border-left: 4px solid var(--clr-primary);
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.92);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes toastOut {
+            to {
+                opacity: 0;
+                transform: translateY(10px) scale(0.95);
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════════════════ */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: var(--text-3);
+        }
+
+        .empty-state-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-2);
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0.5rem 0;
+        }
+
+        .footer {
+            background: var(--bg-2);
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-3);
+            font-size: 0.875rem;
+            border-top: 1px solid var(--border);
+            margin-top: 4rem;
+        }
+
+        .footer strong {
+            color: var(--clr-primary);
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(28px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .detail-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .booking-panel {
+                position: static;
+            }
+
+            .ticket-card {
+                grid-template-columns: 80px 1fr;
+            }
+
+            .ticket-actions {
+                grid-column: 1 / -1;
+                flex-direction: row;
+                padding: 0 1rem 1rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .dest-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+
+            .detail-gallery {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-gallery img:first-child {
+                grid-column: auto;
+            }
+
+            .ticket-card {
+                grid-template-columns: 70px 1fr;
+            }
+
+            .region-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 375px) {
+            .dest-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .region-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav id="navbar" role="navigation" aria-label="Menu utama">
+        <a class="nav-logo" href="#/" aria-label="Wisata Jogja Beranda">
+            <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M14 3L24 10V25H4V10L14 3Z" fill="#c8622a" opacity=".2" />
+                <path d="M14 3L24 10V25H4V10L14 3Z" stroke="#c8622a" stroke-width="2" stroke-linejoin="round" />
+                <path d="M10 25V16H18V25" stroke="#c8622a" stroke-width="2" />
+            </svg>
+            <span class="nav-logo-text">Wisata<span>Jogja</span></span>
+        </a>
+        <div class="nav-links" role="list">
+            <a class="nav-link" href="#/" role="listitem">Beranda</a>
+            <a class="nav-link" href="#/wilayah" role="listitem">Wilayah</a>
+            <a class="nav-link" href="#/pesanan" role="listitem">Pesanan Saya</a>
+        </div>
+        <div class="nav-actions">
+            <button class="btn-theme" id="btnTheme" title="Toggle tema"
+                aria-label="Toggle tema gelap/terang">🌙</button>
+            <div id="navAuth">
+                <button class="btn btn-ghost btn-sm" onclick="location.hash='#/masuk'">Masuk</button>
+                <button class="btn btn-primary btn-sm" onclick="location.hash='#/daftar'">Daftar</button>
+            </div>
+            <div id="navUser" class="user-menu" style="display:none">
+                <div class="user-avatar" id="userAvatar" onclick="toggleDropdown()" role="button" tabindex="0"
+                    aria-label="Menu pengguna" aria-haspopup="true"></div>
+                <div class="user-dropdown" id="userDropdown" role="menu">
+                    <div class="dropdown-header">
+                        <div class="dropdown-name" id="ddName"></div>
+                        <div class="dropdown-email" id="ddEmail"></div>
+                    </div>
+                    <div class="dropdown-item" onclick="location.hash='#/pesanan'; closeDropdown()" role="menuitem">📋
+                        Pesanan Saya</div>
+                    <div class="dropdown-item" id="ddAdmin" style="display:none"
+                        onclick="location.hash='#/admin'; closeDropdown()" role="menuitem">⚙️ Dashboard Admin</div>
+                    <div class="divider"></div>
+                    <div class="dropdown-item danger" onclick="doLogout()" role="menuitem">🚪 Keluar</div>
+                </div>
+            </div>
+            <button class="btn-icon btn-ghost btn-hamburger" id="btnHamburger" aria-label="Buka menu"
+                aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MOBILE MENU -->
+    <div class="mobile-menu" id="mobileMenu" role="dialog" aria-label="Menu navigasi mobile">
+        <div class="mobile-nav-links">
+            <a class="mobile-nav-link" href="#/" onclick="closeMobileMenu()">🏠 Beranda</a>
+            <a class="mobile-nav-link" href="#/wilayah" onclick="closeMobileMenu()">🗺️ Wilayah</a>
+            <a class="mobile-nav-link" href="#/pesanan" onclick="closeMobileMenu()">📋 Pesanan Saya</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;" id="mobileAuthSection">
+            <button class="btn btn-ghost" onclick="location.hash='#/masuk'; closeMobileMenu()">Masuk</button>
+            <button class="btn btn-primary" onclick="location.hash='#/daftar'; closeMobileMenu()">Daftar</button>
+        </div>
+    </div>
+
+    <!-- LIGHTBOX -->
+    <div id="lightbox" role="dialog" aria-modal="true" aria-label="Tampilan foto besar">
+        <button id="lightbox-close" onclick="closeLightbox()" aria-label="Tutup lightbox">✕</button>
+        <img id="lightbox-img" src="" alt="">
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-bg" id="modal" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle"></h2>
+                <button class="modal-close" onclick="closeModal()" aria-label="Tutup modal">✕</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <main id="app"></main>
+
+    <!-- TOAST -->
+    <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>© 2026 <strong>WisataJogja</strong> · Dibuat dengan ❤️ untuk Yogyakarta · Proyek Akademik</p>
+    </footer>
+
+    <script>
+        /* ═══════════════════════════════════════════════════════════
+           STATE & HELPERS
+        ═══════════════════════════════════════════════════════════ */
+        const app = document.getElementById('app');
+        const API = '/api';
+        let _state = { user: null, favorites: new Set(JSON.parse(localStorage.getItem('favs') || '[]')) };
+
+        // XSS escape
+        const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        function getToken() { return localStorage.getItem('token'); }
+        function setToken(t) { localStorage.setItem('token', t); }
+        function clearToken() { localStorage.removeItem('token'); }
+
+        async function api(path, opts = {}) {
+            const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+            const token = getToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const r = await fetch(API + path, { ...opts, headers });
+            if (r.status === 401) {
+                clearToken(); _state.user = null; updateNavAuth();
+                toast('Sesi berakhir. Silakan login kembali.', 'error');
+                location.hash = '#/masuk';
+                throw new Error('Unauthorized');
+            }
+            const data = r.status !== 204 ? await r.json().catch(() => ({})) : {};
+            if (!r.ok) throw Object.assign(new Error(data.error || 'Terjadi kesalahan'), { status: r.status, data });
+            return data;
+        }
+
+        /* Theme */
+        (function () {
+            const saved = localStorage.getItem('theme');
+            const sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            const t = saved || sys;
+            document.documentElement.setAttribute('data-theme', t);
+            document.getElementById('btnTheme').textContent = t === 'dark' ? '☀️' : '🌙';
+        })();
+        document.getElementById('btnTheme').addEventListener('click', () => {
+            const cur = document.documentElement.getAttribute('data-theme');
+            const next = cur === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('btnTheme').textContent = next === 'dark' ? '☀️' : '🌙';
+        });
+
+        /* Navbar scroll */
+        window.addEventListener('scroll', () => {
+            document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+        });
+
+        /* Hamburger */
+        document.getElementById('btnHamburger').addEventListener('click', () => {
+            const mm = document.getElementById('mobileMenu');
+            const open = mm.classList.toggle('open');
+            document.getElementById('btnHamburger').setAttribute('aria-expanded', open);
+            document.body.style.overflow = open ? 'hidden' : '';
+        });
+        function closeMobileMenu() {
+            document.getElementById('mobileMenu').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        /* Toast */
+        function toast(msg, type = 'info', dur = 3500) {
+            const c = document.getElementById('toast-container');
+            const el = document.createElement('div');
+            el.className = `toast toast-${type}`;
+            el.textContent = msg;
+            c.appendChild(el);
+            setTimeout(() => { el.classList.add('exit'); setTimeout(() => el.remove(), 300); }, dur);
+        }
+
+        /* Modal */
+        function openModal(title, html) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('modal').classList.add('open');
+        }
+        function closeModal() { document.getElementById('modal').classList.remove('open'); }
+        document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+        /* Lightbox */
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLightbox(); closeModal(); } });
+
+        /* User dropdown */
+        function toggleDropdown() {
+            const d = document.getElementById('userDropdown');
+            d.classList.toggle('open');
+        }
+        function closeDropdown() { document.getElementById('userDropdown').classList.remove('open'); }
+        document.addEventListener('click', e => {
+            if (!document.getElementById('navUser').contains(e.target)) closeDropdown();
+        });
+
+        /* Favorites */
+        function isFav(id) { return _state.favorites.has(Number(id)); }
+        function toggleFav(id) {
+            id = Number(id);
+            if (_state.favorites.has(id)) _state.favorites.delete(id);
+            else _state.favorites.add(id);
+            localStorage.setItem('favs', JSON.stringify([..._state.favorites]));
+        }
+
+        /* Nav auth update */
+        function updateNavAuth() {
+            const u = _state.user;
+            const navAuth = document.getElementById('navAuth');
+            const navUser = document.getElementById('navUser');
+            if (u) {
+                navAuth.style.display = 'none'; navUser.style.display = '';
+                const initials = u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                document.getElementById('userAvatar').textContent = initials;
+                document.getElementById('ddName').textContent = u.name;
+                document.getElementById('ddEmail').textContent = u.email;
+                document.getElementById('ddAdmin').style.display = u.role === 'admin' ? '' : 'none';
+                // mobile
+                const mas = document.getElementById('mobileAuthSection');
+                if (mas) mas.innerHTML = `<button class="btn btn-danger" onclick="doLogout(); closeMobileMenu()">Keluar</button>`;
+            } else {
+                navAuth.style.display = ''; navUser.style.display = 'none';
+                const mas = document.getElementById('mobileAuthSection');
+                if (mas) mas.innerHTML = `<button class="btn btn-ghost" onclick="location.hash='#/masuk'; closeMobileMenu()">Masuk</button><button class="btn btn-primary" onclick="location.hash='#/daftar'; closeMobileMenu()">Daftar</button>`;
+            }
+        }
+
+        async function doLogout() {
+            try { await api('/auth/logout', { method: 'POST' }); } catch (_) { }
+            clearToken(); _state.user = null; updateNavAuth(); closeDropdown();
+            toast('Berhasil keluar 👋', 'info'); location.hash = '#/';
+        }
+
+        /* Load user from token on start */
+        async function tryRestoreSession() {
+            if (!getToken()) return;
+            try { _state.user = await api('/auth/me'); updateNavAuth(); }
+            catch (_) { clearToken(); }
+        }
+
+        /* Format */
+        const fmt = n => 'Rp' + Number(n).toLocaleString('id-ID');
+        const fmtDate = s => new Date(s + 'T00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+
+        /* ═══════════════════════════════════════════════════════════
+           ROUTER
+        ═══════════════════════════════════════════════════════ */
+        const routes = {
+            '#/': viewHome,
+            '#/wilayah': viewRegions,
+            '#/pesanan': requireLogin(viewBookings),
+            '#/masuk': viewLogin,
+            '#/daftar': viewRegister,
+            '#/admin': requireLogin(viewAdmin, 'admin'),
+        };
+
+        function requireLogin(fn, role) {
+            return async function () {
+                if (!_state.user) { sessionStorage.setItem('afterLogin', location.hash); location.hash = '#/masuk'; return; }
+                if (role && _state.user.role !== role && !isAdmin()) { toast('Akses ditolak', 'error'); location.hash = '#/'; return; }
+                return fn();
+            };
+        }
+        function isAdmin() { return _state.user && _state.user.role === 'admin'; }
+
+        async function route() {
+            const hash = location.hash || '#/';
+            window.scrollTo(0, 0);
+            // Nav active
+            document.querySelectorAll('.nav-link').forEach(a => { a.classList.toggle('active', hash === a.getAttribute('href')); });
+            // Detail route
+            const detailMatch = hash.match(/^#\/wisata\/(\d+)$/);
+            if (detailMatch) { viewDetail(Number(detailMatch[1])); return; }
+            const fn = routes[hash];
+            if (fn) { await fn(); }
+            else { app.innerHTML = `<div class="section"><div class="empty-state"><div class="empty-state-icon">🗺️</div><h3>Halaman tidak ditemukan</h3><p>Kembali ke <a href="#/">beranda</a></p></div></div>`; }
+        }
+        window.addEventListener('hashchange', route);
+
+        /* ═══════════════════════════════════════════════════════════
+           HOME VIEW
+        ═══════════════════════════════════════════════════════ */
+        let _homeState = { dests: [], regions: [], region: '', q: '', page: 0 };
+        const PAGE_SIZE = 12;
+
+        async function viewHome() {
+            // Hero + skeleton
+            app.innerHTML = `
+    <section id="hero" aria-label="Hero beranda">
+      <div class="hero-bg" id="heroBg"></div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div class="hero-badge">✨ 62 destinasi wisata menakjubkan</div>
+        <h1 class="display hero-title">Jelajahi Yogyakarta</h1>
+        <p class="hero-sub">Temukan pesona alam, budaya, dan petualangan di jantung Pulau Jawa</p>
+        <div class="hero-search" role="search">
+          <label for="heroSearch" class="sr-only" style="position:absolute;clip:rect(0,0,0,0)">Cari wisata</label>
+          <input id="heroSearch" type="search" placeholder="Cari wisata, mis. Borobudur, Parangtritis..." autocomplete="off">
+          <button onclick="doSearch()" aria-label="Cari">🔍 Cari</button>
+        </div>
+      </div>
+      <div class="hero-scroll" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+    </section>
+    <div class="section">
+      <div class="section-header">
+        <h2 class="h2">Pilih Wilayah</h2>
+      </div>
+      <div class="chip-bar" id="chipBar" role="tablist"></div>
+      <div class="region-grid" id="regionGrid"></div>
+    </div>
+    <div class="section" style="padding-top:0">
+      <div class="section-header">
+        <h2 class="h2" id="destHeading">Semua Destinasi</h2>
+        <span style="color:var(--text-3);font-size:0.875rem" id="destCount"></span>
+      </div>
+      <div class="dest-grid" id="destGrid">${Array(8).fill(skeletonCard()).join('')}</div>
+      <div style="text-align:center;margin-top:2rem" id="loadMoreWrap"></div>
+    </div>`;
+
+            // Parallax
+            const heroBg = document.getElementById('heroBg');
+            window.addEventListener('scroll', () => {
+                heroBg.style.transform = `translateY(${window.scrollY * 0.35}px)`;
+            }, { passive: true });
+
+            // Enter search
+            document.getElementById('heroSearch').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+            try {
+                const [dests, regs] = await Promise.all([api('/destinations'), api('/regions')]);
+                _homeState.dests = dests; _homeState.regions = regs;
+                renderChips(); renderRegionCards(); renderDests();
+            } catch (e) { showError('Gagal memuat data. Coba muat ulang halaman.'); }
+        }
+
+        function doSearch() {
+            _homeState.q = document.getElementById('heroSearch')?.value.trim() || '';
+            _homeState.region = '';
+            renderChips(); renderDests();
+        }
+
+        function skeletonCard() {
+            return `<div class="skeleton-card"><div class="skeleton sk-img"></div><div class="sk-body"><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div></div></div>`;
+        }
+
+        function renderChips() {
+            const bar = document.getElementById('chipBar');
+            if (!bar) return;
+            const all = [{ slug: '', name: 'Semua' }, ..._homeState.regions];
+            bar.innerHTML = all.map(r => `
+    <button class="chip ${_homeState.region === r.slug ? 'active' : ''}" onclick="filterRegion('${r.slug}')" role="tab" aria-selected="${_homeState.region === r.slug}" aria-label="Filter ${r.name}">${r.name}</button>
+  `).join('');
+        }
+
+        function renderRegionCards() {
+            const el = document.getElementById('regionGrid');
+            if (!el) return;
+            // Ambil foto pertama dari daerah masing-masing
+            const regionPhoto = {};
+            _homeState.dests.forEach(d => { if (!regionPhoto[d.region] && d.photos[0]) regionPhoto[d.region] = d.photos[0]; });
+            el.innerHTML = _homeState.regions.map(r => `
+    <div class="region-card" onclick="filterRegion('${r.slug}')" role="button" tabindex="0" aria-label="Lihat wisata di ${r.name}">
+      <img src="${regionPhoto[r.slug] || '/static/img/1-1.jpg'}" alt="${esc(r.name)}" loading="lazy">
+      <div class="region-card-overlay"></div>
+      <div class="region-card-text">
+        <div class="region-card-name">${esc(r.name)}</div>
+        <div class="region-card-tagline">${esc(r.tagline || '')}</div>
+      </div>
+    </div>
+  `).join('');
+            el.querySelectorAll('.region-card').forEach(c => {
+                c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') c.click(); });
+            });
+        }
+
+        function filterRegion(slug) {
+            _homeState.region = slug; _homeState.page = 0;
+            renderChips(); renderDests();
+            document.getElementById('destGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function renderDests() {
+            const grid = document.getElementById('destGrid');
+            const lmw = document.getElementById('loadMoreWrap');
+            const heading = document.getElementById('destHeading');
+            const countEl = document.getElementById('destCount');
+            if (!grid) return;
+            let filtered = _homeState.dests;
+            if (_homeState.region) filtered = filtered.filter(d => d.region === _homeState.region);
+            if (_homeState.q) filtered = filtered.filter(d => d.name.toLowerCase().includes(_homeState.q.toLowerCase()));
+            const shown = filtered.slice(0, (_homeState.page + 1) * PAGE_SIZE);
+            if (heading) {
+                const reg = _homeState.regions.find(r => r.slug === _homeState.region);
+                heading.textContent = reg ? reg.name : 'Semua Destinasi';
+            }
+            if (countEl) countEl.textContent = `${filtered.length} destinasi`;
+            if (!filtered.length) {
+                grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🔍</div><h3>Tidak ditemukan</h3><p>Coba kata kunci lain atau reset filter</p><button class="btn btn-ghost" style="margin-top:1rem" onclick="filterRegion(''); _homeState.q=''; renderDests()">Reset Filter</button></div>`;
+                if (lmw) lmw.innerHTML = '';
+                return;
+            }
+            grid.innerHTML = shown.map((d, i) => destCard(d, i)).join('');
+            if (lmw) lmw.innerHTML = shown.length < filtered.length
+                ? `<button class="btn btn-ghost btn-lg" onclick="_homeState.page++;renderDests()">Muat lebih banyak</button>`
+                : '';
+            // Intersection observer for stagger
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } });
+            }, { threshold: 0.1 });
+            grid.querySelectorAll('.dest-card').forEach((el, i) => {
+                el.style.animationDelay = `${i * 0.05}s`;
+                observer.observe(el);
+            });
+        }
+
+        function destCard(d, i) {
+            const photo = d.photos[0] || '/static/img/1-1.jpg';
+            const price = d.price ? `Mulai ${fmt(d.price)}` : 'Sukarela';
+            const fav = isFav(d.id);
+            return `
+  <article class="dest-card" style="animation-delay:${i * 0.05}s">
+    <div class="dest-card-img">
+      <img src="${esc(photo)}" alt="${esc(d.name)}" loading="lazy" onerror="this.src='/static/img/1-1.jpg'">
+      <div class="dest-card-badge">${price}</div>
+      <button class="dest-card-fav ${fav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavBtn(this, ${d.id})" aria-label="${fav ? 'Hapus' : 'Tambah'} favorit" aria-pressed="${fav}">${fav ? '❤️' : '🤍'}</button>
+      <div class="dest-card-overlay"><button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); location.hash='#/wisata/${d.id}'">Pesan Tiket</button></div>
+    </div>
+    <div class="dest-card-body" onclick="location.hash='#/wisata/${d.id}'" style="cursor:pointer">
+      <div class="dest-card-name">${esc(d.name)}</div>
+      <div class="dest-card-region">${esc(regionLabel(d.region))}</div>
+    </div>
+  </article>`;
+        }
+        window.toggleFavBtn = function (btn, id) {
+            toggleFav(id);
+            const isNow = isFav(id);
+            btn.className = `dest-card-fav ${isNow ? 'active' : ''}`;
+            btn.innerHTML = isNow ? '❤️' : '🤍';
+            btn.setAttribute('aria-pressed', isNow);
+            toast(isNow ? 'Ditambahkan ke favorit ❤️' : 'Dihapus dari favorit', 'info', 1800);
+        };
+        function regionLabel(slug) {
+            const reg = (_homeState.regions || []).find(r => r.slug === slug);
+            return reg ? reg.name : slug;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           REGION VIEW
+        ═══════════════════════════════════════════════════════ */
+        async function viewRegions() {
+            app.innerHTML = `<div class="page-wrapper"><div class="section"><h1 class="h1" style="margin-bottom:2rem">Jelajahi Wilayah</h1><div class="region-grid" id="regionGrid">${Array(5).fill(skeletonCard()).join('')}</div></div></div>`;
+            try {
+                const [regs, dests] = await Promise.all([api('/regions'), api('/destinations')]);
+                _homeState.regions = regs; _homeState.dests = dests;
+                const regionPhoto = {};
+                dests.forEach(d => { if (!regionPhoto[d.region] && d.photos[0]) regionPhoto[d.region] = d.photos[0]; });
+                document.getElementById('regionGrid').innerHTML = regs.map(r => `
+      <div class="region-card" onclick="location.hash='#/'; setTimeout(()=>filterRegion('${r.slug}'),100)" role="button" tabindex="0" aria-label="${esc(r.name)}">
+        <img src="${regionPhoto[r.slug] || '/static/img/1-1.jpg'}" alt="${esc(r.name)}" loading="lazy">
+        <div class="region-card-overlay"></div>
+        <div class="region-card-text">
+          <div class="region-card-name">${esc(r.name)}</div>
+          <div class="region-card-tagline">${esc(r.tagline || '')} · ${r.total} destinasi</div>
+        </div>
+      </div>
+    `).join('');
+            } catch (e) { showError(); }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           DETAIL VIEW
+        ═══════════════════════════════════════════════════════ */
+        let _detail = { dest: null, cal: [], selectedDate: null, qty: 1, tier: 'base', step: 1 };
+
+        async function viewDetail(id) {
+            app.innerHTML = `<div class="page-wrapper"><div class="section" style="padding-top:calc(var(--nav-h) + 1.5rem)">${skeletonCard()}${skeletonCard()}</div></div>`;
+            try {
+                const d = await api(`/destinations/${id}`);
+                _detail.dest = d; _detail.step = 1; _detail.selectedDate = null; _detail.qty = 1;
+                renderDetailPage();
+                // Load calendar
+                const now = new Date();
+                loadCal(now.getFullYear(), now.getMonth() + 1);
+            } catch (e) { showError(); }
+        }
+
+        function renderDetailPage() {
+            const d = _detail.dest;
+            const photos = d.photos.length >= 2 ? d.photos : [d.photos[0], d.photos[0]];
+            app.innerHTML = `
+    <div class="page-wrapper">
+      <div class="section" style="padding-top:calc(var(--nav-h) + 2rem)">
+        <div class="detail-layout">
+          <div>
+            <div class="detail-gallery">
+              ${photos.map((p, i) => `<img src="${esc(p)}" alt="${esc(d.name)} foto ${i + 1}" loading="lazy" onclick="openLightbox('${esc(p)}')" onerror="this.src='/static/img/1-1.jpg'">`).join('')}
+            </div>
+            <div class="detail-badge">${esc(regionLabel(d.region))}</div>
+            <h1 class="h1 detail-title">${esc(d.name)}</h1>
+            <div class="detail-price">${esc(d.price_label)}</div>
+            <p class="detail-desc">${esc(d.description)}</p>
+          </div>
+          <aside>
+            <div class="booking-panel" id="bookingPanel">
+              ${renderBookingPanel()}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>`;
+        }
+
+        function renderBookingPanel() {
+            const d = _detail.dest;
+            if (_detail.step === 1) return renderStep1();
+            if (_detail.step === 2) return renderStep2();
+            if (_detail.step === 3) return renderStep3();
+            return '';
+        }
+
+        function renderStepper(current) {
+            return `<div class="stepper" role="list">
+    ${[1, 2, 3].map((n, i) => `
+      <div class="step ${current > n ? 'done' : current === n ? 'active' : ''}" role="listitem">
+        <div class="step-num">${current > n ? '✓' : n}</div>
+        ${i < 2 ? '<div class="step-line"></div>' : ''}
+      </div>
+    `).join('')}
+  </div>`;
+        }
+
+        function renderStep1() {
+            const today = new Date();
+            return `
+    ${renderStepper(1)}
+    <h3 class="h3" style="margin-bottom:1.25rem">Pilih Tanggal & Jumlah</h3>
+    <div class="cal-header">
+      <button class="cal-btn" onclick="changeMonth(-1)" aria-label="Bulan sebelumnya">‹</button>
+      <span class="cal-month-label" id="calMonthLabel"></span>
+      <button class="cal-btn" onclick="changeMonth(1)" aria-label="Bulan berikutnya">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid">
+      ${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div class="cal-day-hdr">${d}</div>`).join('')}
+    </div>
+    <div style="margin-top:1.25rem">
+      <label class="form-label">Jumlah Tiket</label>
+      <div class="qty-stepper">
+        <button class="qty-btn" onclick="changeQty(-1)" aria-label="Kurangi">−</button>
+        <span class="qty-val" id="qtyVal">${_detail.qty}</span>
+        <button class="qty-btn" onclick="changeQty(1)" aria-label="Tambah">+</button>
+      </div>
+    </div>
+    ${_detail.dest.price_max ? `
+    <div style="margin-top:1rem">
+      <label class="form-label">Jenis Tiket</label>
+      <select class="form-input" onchange="_detail.tier=this.value; updatePriceDisplay()" aria-label="Jenis tiket">
+        <option value="base">Reguler – ${fmt(_detail.dest.price)}</option>
+        <option value="plus">Plus / Wahana – ${fmt(_detail.dest.price_max)}</option>
+      </select>
+    </div>` : ''}
+    <div class="price-summary" id="priceSummary" style="${_detail.selectedDate ? '' : 'display:none'}">
+      <div class="price-row"><span>Harga/tiket</span><span id="psUnit">-</span></div>
+      <div class="price-row"><span>Jumlah</span><span id="psQty">1</span></div>
+      <div class="price-row"><span>Total</span><span class="price-total-val" id="psTotal">-</span></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:0.75rem" onclick="goStep2()" ${_detail.selectedDate ? '' : 'disabled'}>Lanjut →</button>
+  `;
+        }
+
+        function renderStep2() {
+            const u = _state.user;
+            return `
+    ${renderStepper(2)}
+    <h3 class="h3" style="margin-bottom:1.25rem">Data Pemesan</h3>
+    <div class="form-group">
+      <label class="form-label" for="bName">Nama Lengkap</label>
+      <input class="form-input" id="bName" type="text" value="${esc(u ? u.name : '')}" placeholder="Nama lengkap" required aria-required="true">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="bEmail">Email</label>
+      <input class="form-input" id="bEmail" type="email" value="${esc(u ? u.email : '')}" placeholder="email@contoh.com" required aria-required="true">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="bPhone">No. Telepon</label>
+      <input class="form-input" id="bPhone" type="tel" placeholder="0812..." aria-label="Nomor telepon">
+    </div>
+    <div style="display:flex;gap:0.75rem;margin-top:1.5rem">
+      <button class="btn btn-ghost" style="flex:1" onclick="goStep(1)">← Kembali</button>
+      <button class="btn btn-primary" style="flex:2" onclick="goStep3()">Lanjut →</button>
+    </div>
+  `;
+        }
+
+        function renderStep3() {
+            const d = _detail.dest; const sd = _detail.selectedDate;
+            const unit = getUnitPrice();
+            const total = unit * _detail.qty;
+            return `
+    ${renderStepper(3)}
+    <h3 class="h3" style="margin-bottom:1.25rem">Konfirmasi Pesanan</h3>
+    <div class="price-summary">
+      <div class="price-row"><span>Wisata</span><span>${esc(d.name)}</span></div>
+      <div class="price-row"><span>Tanggal</span><span>${sd ? fmtDate(sd.date) : '-'}</span></div>
+      <div class="price-row"><span>Jumlah Tiket</span><span>${_detail.qty}</span></div>
+      <div class="price-row"><span>Harga/tiket</span><span>${fmt(unit)}</span></div>
+      <div class="price-row"><span>Total Pembayaran</span><span class="price-total-val">${fmt(total)}</span></div>
+    </div>
+    <div id="bookResult"></div>
+    <div style="display:flex;gap:0.75rem;margin-top:1.5rem">
+      <button class="btn btn-ghost" style="flex:1" onclick="goStep(2)">← Kembali</button>
+      <button class="btn btn-primary" style="flex:2" id="btnBook" onclick="submitBook()">Pesan Sekarang</button>
+    </div>
+  `;
+        }
+
+        function getUnitPrice() {
+            const d = _detail.dest; const sd = _detail.selectedDate;
+            if (!sd) return d.price || 0;
+            if (_detail.tier === 'plus' && d.price_max) return d.price_max;
+            return sd.price || d.price || 0;
+        }
+
+        function goStep(n) { _detail.step = n; document.getElementById('bookingPanel').innerHTML = renderBookingPanel(); if (n === 1) loadCalFromState(); }
+        function goStep2() { if (!_detail.selectedDate) { toast('Pilih tanggal terlebih dahulu', 'error'); return; } if (!_state.user) { sessionStorage.setItem('afterLogin', location.hash); location.hash = '#/masuk'; return; } goStep(2); }
+        function goStep3() {
+            const name = document.getElementById('bName')?.value.trim();
+            const email = document.getElementById('bEmail')?.value.trim();
+            if (!name) { toast('Nama wajib diisi', 'error'); return; }
+            if (!email || !email.includes('@')) { toast('Email tidak valid', 'error'); return; }
+            _detail.bookerName = name; _detail.bookerEmail = email; _detail.bookerPhone = document.getElementById('bPhone')?.value || '';
+            goStep(3);
+        }
+
+        let _calState = { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+        async function loadCal(y, m) {
+            _calState = { year: y, month: m };
+            try {
+                _detail.cal = await api(`/destinations/${_detail.dest.id}/calendar?month=${y}-${String(m).padStart(2, '0')}`);
+                renderCal();
+            } catch (e) { }
+        }
+        function loadCalFromState() { loadCal(_calState.year, _calState.month); }
+        window.changeMonth = function (d) { let { year, month } = _calState; month += d; if (month < 1) { month = 12; year--; } if (month > 12) { month = 1; year++; } loadCal(year, month); };
+
+        function renderCal() {
+            const grid = document.getElementById('calGrid');
+            const label = document.getElementById('calMonthLabel');
+            if (!grid || !_detail.cal.length) return;
+            const first = new Date(_detail.cal[0].date + 'T00:00');
+            if (label) label.textContent = first.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            const dow = first.getDay(); // 0=Sun
+            const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div class="cal-day-hdr">${d}</div>`).join('');
+            const blanks = Array(dow).fill('<div></div>').join('');
+            const today = new Date().toISOString().split('T')[0];
+            const cells = _detail.cal.map(day => {
+                const d = new Date(day.date + 'T00:00');
+                const isToday = day.date === today;
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                const isSelected = _detail.selectedDate?.date === day.date;
+                const isSoldOut = day.remaining === 0;
+                let cls = 'cal-day';
+                if (day.past) cls += ' past';
+                else if (isSoldOut) cls += ' sold-out';
+                else if (isSelected) cls += ' selected';
+                else if (isToday) cls += ' today';
+                else if (isWeekend) cls += ' weekend';
+                const priceStr = day.price ? `${(day.price / 1000).toFixed(0)}k` : '';
+                const clickable = !day.past && !isSoldOut;
+                return `<div class="${cls}" ${clickable ? `onclick="selectDate('${day.date}', ${day.price})"` : ''} role="${clickable ? 'button' : 'presentation'}" ${clickable ? `tabindex="0" aria-label="${day.date} - ${priceStr}"` : ''}>${d.getDate()}<span class="cal-day-price">${priceStr}</span></div>`;
+            }).join('');
+            grid.innerHTML = days + blanks + cells;
+        }
+
+        window.selectDate = function (dateStr, price) {
+            _detail.selectedDate = { date: dateStr, price };
+            renderCal();
+            updatePriceDisplay();
+            document.getElementById('priceSummary')?.style.removeProperty('display');
+        };
+
+        function updatePriceDisplay() {
+            const unit = getUnitPrice();
+            const total = unit * _detail.qty;
+            const ps = document.getElementById('priceSummary');
+            if (ps) ps.style.display = '';
+            const el = id => document.getElementById(id);
+            if (el('psUnit')) el('psUnit').textContent = fmt(unit);
+            if (el('psQty')) el('psQty').textContent = _detail.qty;
+            if (el('psTotal')) el('psTotal').textContent = fmt(total);
+        }
+
+        window.changeQty = function (d) {
+            _detail.qty = Math.max(1, Math.min(20, _detail.qty + d));
+            const el = document.getElementById('qtyVal');
+            if (el) el.textContent = _detail.qty;
+            updatePriceDisplay();
+        };
+
+        async function submitBook() {
+            if (!_state.user) { location.hash = '#/masuk'; return; }
+            const btn = document.getElementById('btnBook');
+            if (btn) { btn.classList.add('btn-loading'); btn.disabled = true; }
+            try {
+                const res = await api('/bookings', {
+                    method: 'POST', body: JSON.stringify({
+                        destination_id: _detail.dest.id,
+                        visit_date: _detail.selectedDate.date,
+                        qty: _detail.qty, tier: _detail.tier,
+                        name: _detail.bookerName, email: _detail.bookerEmail, phone: _detail.bookerPhone
+                    })
+                });
+                // Success screen
+                showSuccessScreen(res);
+                if (res.email_sent) toast(`Konfirmasi dikirim ke ${esc(res.email)}`, 'success');
+            } catch (e) {
+                const r = document.getElementById('bookResult');
+                if (r) r.innerHTML = `<div style="color:var(--danger);margin-top:0.75rem;font-size:0.875rem">⚠ ${esc(e.message)}</div>`;
+                if (btn) { btn.classList.remove('btn-loading'); btn.disabled = false; }
+            }
+        }
+
+        function showSuccessScreen(b) {
+            const unit = b.unit_price;
+            app.innerHTML = `
+    <div class="page-wrapper">
+      <div class="section" style="padding-top:calc(var(--nav-h)+2rem);max-width:520px">
+        <div style="text-align:center;margin-bottom:2rem">
+          <div class="check-circle">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="17" stroke="#16a34a" stroke-width="2"/>
+              <polyline points="10,18 15,24 26,12" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="100" stroke-dashoffset="100" style="animation:drawCheck 0.6s ease 0.3s forwards"/>
+            </svg>
+          </div>
+          <h1 class="h1">Pesanan Berhasil!</h1>
+          <p style="color:var(--text-3);margin-top:0.5rem">Tiket Anda sudah siap</p>
+        </div>
+        <div class="eticket">
+          <div class="eticket-top">
+            <div style="font-size:0.8rem;opacity:0.8;margin-bottom:0.25rem">KODE BOOKING</div>
+            <div class="eticket-code">${esc(b.code)}</div>
+            <div style="font-size:0.85rem;opacity:0.8;margin-top:0.5rem">${esc(b.destination?.name || '')}</div>
+          </div>
+          <div class="eticket-body">
+            <div class="eticket-row"><span class="eticket-label">Tanggal</span><span class="eticket-val">${fmtDate(b.visit_date)}</span></div>
+            <div class="eticket-row"><span class="eticket-label">Pemesan</span><span class="eticket-val">${esc(b.name)}</span></div>
+            <div class="eticket-row"><span class="eticket-label">Jumlah Tiket</span><span class="eticket-val">${b.qty} tiket</span></div>
+            <div class="eticket-row"><span class="eticket-label">Harga/tiket</span><span class="eticket-val">${fmt(unit)}</span></div>
+            <div class="eticket-row"><span class="eticket-label">Total Dibayar</span><span class="eticket-val" style="color:var(--clr-primary);font-size:1.1rem">${fmt(b.total)}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.75rem;margin-top:1.5rem;justify-content:center">
+          <button class="btn btn-ghost" onclick="location.hash='#/'">← Beranda</button>
+          <button class="btn btn-primary" onclick="location.hash='#/pesanan'">Lihat Pesanan Saya</button>
+        </div>
+      </div>
+    </div>`;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           BOOKINGS VIEW
+        ═══════════════════════════════════════════════════════ */
+        async function viewBookings() {
+            app.innerHTML = `<div class="page-wrapper"><div class="section" style="padding-top:calc(var(--nav-h)+2rem)"><h1 class="h1" style="margin-bottom:2rem">Pesanan Saya</h1><div id="bList">${Array(3).fill(skeletonCard()).join('')}</div></div></div>`;
+            try {
+                const bookings = await api('/bookings');
+                const el = document.getElementById('bList');
+                if (!el) return;
+                if (!bookings.length) { el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎫</div><h3>Belum ada pesanan</h3><p>Mulai jelajahi wisata dan buat pesanan pertamamu!</p><button class="btn btn-primary" style="margin-top:1rem" onclick="location.hash='#/'">Jelajahi Sekarang</button></div>`; return; }
+                el.innerHTML = `<div class="ticket-list">${bookings.map(b => ticketCard(b)).join('')}</div>`;
+            } catch (e) { showError(); }
+        }
+
+        function ticketCard(b) {
+            const photo = (b.destination?.name ? `/static/img/${b.destination_id || 1}-1.jpg` : '/static/img/1-1.jpg');
+            const badge = b.status === 'PAID' ? '<span class="badge badge-paid">✓ Lunas</span>' : '<span class="badge badge-refunded">↩ Refund</span>';
+            const pct = b.refundable_percent;
+            return `
+    <div class="ticket-card" id="tc-${esc(b.code)}">
+      <img class="ticket-img" src="${photo}" alt="${esc(b.destination?.name || '')}" loading="lazy" onerror="this.src='/static/img/1-1.jpg'">
+      <div class="ticket-body">
+        <div class="ticket-dest">${esc(b.destination?.name || 'Wisata')}</div>
+        <div class="ticket-meta">
+          <span>📅 ${fmtDate(b.visit_date)}</span>
+          <span>🎫 ${b.qty} tiket</span>
+          <span>💰 ${fmt(b.total)}</span>
+        </div>
+        <div class="ticket-code">${esc(b.code)}</div>
+        ${badge}
+      </div>
+      <div class="ticket-actions">
+        ${b.status === 'PAID' ? `
+          <button class="btn btn-ghost btn-sm" onclick="showChangeModal('${esc(b.code)}', '${esc(b.visit_date)}', ${b.qty})">📅 Ubah</button>
+          <button class="btn btn-sm" style="background:#fef3c7;color:#92400e" onclick="showRefundModal('${esc(b.code)}', ${b.total}, ${pct})">${pct}% Refund</button>
+        ` : `<span style="font-size:0.78rem;color:var(--text-3)">Refund: ${fmt(b.refund_amount)}</span>`}
+      </div>
+    </div>`;
+        }
+
+        window.showChangeModal = function (code, visitDate, qty) {
+            openModal('Ubah Jadwal & Jumlah', `
+    <div class="form-group">
+      <label class="form-label" for="newDate">Tanggal Baru</label>
+      <input class="form-input" id="newDate" type="date" value="${esc(visitDate)}" min="${new Date().toISOString().split('T')[0]}" aria-label="Tanggal baru">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="newQty">Jumlah Tiket Baru</label>
+      <input class="form-input" id="newQty" type="number" min="1" max="20" value="${qty}" aria-label="Jumlah tiket baru">
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:0.5rem" onclick="doChangeBooking('${esc(code)}')">Simpan Perubahan</button>
+  `);
+        };
+
+        window.doChangeBooking = async function (code) {
+            const date = document.getElementById('newDate').value;
+            const qty = Number(document.getElementById('newQty').value);
+            if (!date) { toast('Tanggal wajib diisi', 'error'); return; }
+            try {
+                await api(`/bookings/${code}`, { method: 'PUT', body: JSON.stringify({ visit_date: date, qty }) });
+                closeModal(); toast('Jadwal berhasil diubah ✓', 'success'); viewBookings();
+            } catch (e) { toast(e.message, 'error'); }
+        };
+
+        window.showRefundModal = function (code, total, pct) {
+            openModal('Konfirmasi Refund', `
+    <p style="color:var(--text-2);margin-bottom:1.25rem">Anda akan melakukan refund <strong>${pct}%</strong> = <strong>${fmt(total * pct / 100)}</strong>.</p>
+    <p style="color:var(--text-3);font-size:0.875rem;margin-bottom:1.5rem">Kebijakan: ≥3 hari = 100%, 1-2 hari = 50%, hari-H = 0%.</p>
+    <div class="form-group">
+      <label class="form-label" for="refReason">Alasan (opsional)</label>
+      <input class="form-input" id="refReason" type="text" placeholder="Alasan pembatalan..." aria-label="Alasan refund">
+    </div>
+    <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Batal</button>
+      <button class="btn btn-danger" style="flex:1" onclick="doRefund('${esc(code)}')">Ya, Refund</button>
+    </div>
+  `);
+        };
+
+        window.doRefund = async function (code) {
+            const reason = document.getElementById('refReason')?.value || '';
+            try {
+                await api(`/bookings/${code}/refund`, { method: 'POST', body: JSON.stringify({ reason }) });
+                closeModal(); toast('Refund berhasil diproses ✓', 'success'); viewBookings();
+            } catch (e) { toast(e.message, 'error'); }
+        };
+
+        /* ═══════════════════════════════════════════════════════════
+           AUTH VIEWS
+        ═══════════════════════════════════════════════════════ */
+        function viewLogin() {
+            app.innerHTML = `
+    <div class="auth-layout">
+      <div class="auth-left">
+        <img src="/static/img/10-1.jpg" alt="Wisata Jogja" loading="lazy">
+        <div class="auth-left-content">
+          <p class="auth-quote">"Yogyakarta, kota yang tidak pernah habis untuk dijelajahi."</p>
+          <p class="auth-quote-sub">62 destinasi wisata menakjubkan menantimu</p>
+        </div>
+      </div>
+      <div class="auth-right">
+        <a class="auth-logo-link" href="#/">Wisata<span>Jogja</span></a>
+        <h1 class="auth-title">Selamat datang kembali</h1>
+        <p class="auth-sub">Masuk untuk melihat dan mengelola pesanan Anda</p>
+        <form id="loginForm" onsubmit="doLogin(event)" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="lEmail">Email</label>
+            <input class="form-input" id="lEmail" type="email" placeholder="email@contoh.com" autocomplete="email" required aria-required="true">
+            <div class="form-error" id="lEmailErr"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lPass">Kata Sandi</label>
+            <div class="form-input-wrap">
+              <input class="form-input" id="lPass" type="password" placeholder="Minimal 8 karakter" autocomplete="current-password" required aria-required="true">
+              <span class="input-eye" onclick="togglePwd('lPass')" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">👁</span>
+            </div>
+            <div class="form-error" id="lPassErr"></div>
+          </div>
+          <div class="form-error" id="loginErr" style="margin-bottom:0.75rem"></div>
+          <button class="btn btn-primary" style="width:100%" type="submit" id="btnLogin">Masuk</button>
+        </form>
+        <div class="auth-switch">Belum punya akun? <a href="#/daftar">Daftar sekarang</a></div>
+      </div>
+    </div>`;
+        }
+
+        async function doLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('lEmail').value.trim();
+            const pass = document.getElementById('lPass').value;
+            const btn = document.getElementById('btnLogin');
+            const err = document.getElementById('loginErr');
+            if (!email) { document.getElementById('lEmailErr').textContent = 'Email wajib diisi'; return; }
+            if (!pass) { document.getElementById('lPassErr').textContent = 'Kata sandi wajib diisi'; return; }
+            btn.classList.add('btn-loading'); btn.disabled = true; err.textContent = '';
+            try {
+                const res = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
+                setToken(res.token); _state.user = res.user; updateNavAuth();
+                toast(`Selamat datang, ${esc(res.user.name)}! 👋`, 'success');
+                const next = sessionStorage.getItem('afterLogin') || '#/';
+                sessionStorage.removeItem('afterLogin');
+                location.hash = next;
+            } catch (ex) {
+                err.textContent = ex.message || 'Email atau kata sandi salah';
+                btn.classList.remove('btn-loading'); btn.disabled = false;
+            }
+        }
+
+        function viewRegister() {
+            app.innerHTML = `
+    <div class="auth-layout">
+      <div class="auth-left">
+        <img src="/static/img/15-1.jpg" alt="Wisata Jogja" loading="lazy">
+        <div class="auth-left-content">
+          <p class="auth-quote">"Setiap perjalanan dimulai dari satu langkah berani."</p>
+          <p class="auth-quote-sub">Bergabung dan mulai rencanakan petualanganmu</p>
+        </div>
+      </div>
+      <div class="auth-right">
+        <a class="auth-logo-link" href="#/">Wisata<span>Jogja</span></a>
+        <h1 class="auth-title">Buat Akun Baru</h1>
+        <p class="auth-sub">Daftar gratis dan mulai jelajahi Yogyakarta</p>
+        <form id="regForm" onsubmit="doRegister(event)" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="rName">Nama Lengkap</label>
+            <input class="form-input" id="rName" type="text" placeholder="Nama Anda" autocomplete="name" required aria-required="true">
+            <div class="form-error" id="rNameErr"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rEmail">Email</label>
+            <input class="form-input" id="rEmail" type="email" placeholder="email@contoh.com" autocomplete="email" required aria-required="true">
+            <div class="form-error" id="rEmailErr"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rPass">Kata Sandi</label>
+            <div class="form-input-wrap">
+              <input class="form-input" id="rPass" type="password" placeholder="Minimal 8 karakter" autocomplete="new-password" required aria-required="true" oninput="checkPwdStrength(this.value)">
+              <span class="input-eye" onclick="togglePwd('rPass')" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">👁</span>
+            </div>
+            <div class="pwd-strength" id="pwdBars"><div class="pwd-bar"></div><div class="pwd-bar"></div><div class="pwd-bar"></div></div>
+            <div class="form-error" id="rPassErr"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rPass2">Konfirmasi Kata Sandi</label>
+            <div class="form-input-wrap">
+              <input class="form-input" id="rPass2" type="password" placeholder="Ulangi kata sandi" autocomplete="new-password" required aria-required="true">
+              <span class="input-eye" onclick="togglePwd('rPass2')" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">👁</span>
+            </div>
+            <div class="form-error" id="rPass2Err"></div>
+          </div>
+          <div class="form-error" id="regErr" style="margin-bottom:0.75rem"></div>
+          <button class="btn btn-primary" style="width:100%" type="submit" id="btnReg">Daftar Sekarang</button>
+        </form>
+        <div class="auth-switch">Sudah punya akun? <a href="#/masuk">Masuk di sini</a></div>
+      </div>
+    </div>`;
+        }
+
+        function checkPwdStrength(val) {
+            const bars = document.querySelectorAll('.pwd-bar');
+            let score = 0;
+            if (val.length >= 8) score++;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+            if (/[0-9]/.test(val) || /[^A-Za-z0-9]/.test(val)) score++;
+            const cls = ['', 'weak', 'fair', 'strong'];
+            bars.forEach((b, i) => { b.className = 'pwd-bar' + (i < score ? ` ${cls[score]}` : ''); });
+        }
+
+        function togglePwd(id) {
+            const inp = document.getElementById(id);
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+        }
+
+        async function doRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('rName').value.trim();
+            const email = document.getElementById('rEmail').value.trim();
+            const pass = document.getElementById('rPass').value;
+            const pass2 = document.getElementById('rPass2').value;
+            const btn = document.getElementById('btnReg');
+            const errEl = document.getElementById('regErr');
+            // Validasi
+            let ok = true;
+            const setE = (id, msg) => { document.getElementById(id).textContent = msg; ok = ok && !msg; };
+            setE('rNameErr', name ? '' : 'Nama wajib diisi');
+            setE('rEmailErr', email && email.includes('@') ? '' : 'Email tidak valid');
+            setE('rPassErr', pass.length >= 8 ? '' : 'Password minimal 8 karakter');
+            setE('rPass2Err', pass === pass2 ? '' : 'Konfirmasi password tidak sama');
+            if (!ok) return;
+            btn.classList.add('btn-loading'); btn.disabled = true; errEl.textContent = '';
+            try {
+                const res = await api('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password: pass }) });
+                setToken(res.token); _state.user = res.user; updateNavAuth();
+                toast(`Selamat bergabung, ${esc(res.user.name)}! 🎉`, 'success');
+                location.hash = '#/';
+            } catch (ex) {
+                errEl.textContent = ex.message || 'Gagal mendaftar';
+                btn.classList.remove('btn-loading'); btn.disabled = false;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           ADMIN VIEW
+        ═══════════════════════════════════════════════════════ */
+        let _adminDests = [];
+        async function viewAdmin() {
+            if (!isAdmin()) { toast('Akses ditolak', 'error'); location.hash = '#/'; return; }
+            app.innerHTML = `<div class="page-wrapper"><div class="section" style="padding-top:calc(var(--nav-h)+2rem)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+      <h1 class="h1">Dashboard Admin</h1>
+      <button class="btn btn-primary" onclick="openDestModal()">+ Tambah Wisata</button>
+    </div>
+    <div class="admin-table-wrap"><div id="adminTable">${skeletonCard()}</div></div>
+  </div></div>`;
+            try {
+                _adminDests = await api('/destinations');
+                renderAdminTable();
+            } catch (e) { showError(); }
+        }
+
+        function renderAdminTable() {
+            const el = document.getElementById('adminTable');
+            if (!el) return;
+            el.innerHTML = `<table role="table" aria-label="Daftar destinasi wisata">
+    <thead><tr>
+      <th>ID</th><th>Nama</th><th>Wilayah</th><th>Harga</th><th>Kuota/hr</th><th>Aksi</th>
+    </tr></thead>
+    <tbody>
+      ${_adminDests.map(d => `<tr>
+        <td>${d.id}</td>
+        <td><strong>${esc(d.name)}</strong></td>
+        <td>${esc(d.region)}</td>
+        <td>${fmt(d.price)}</td>
+        <td>${d.daily_quota}</td>
+        <td style="display:flex;gap:0.5rem;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="openDestModal(${d.id})" aria-label="Edit ${esc(d.name)}">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDest(${d.id})" aria-label="Hapus ${esc(d.name)}">🗑️</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+        }
+
+        window.openDestModal = function (id) {
+            const d = id ? _adminDests.find(x => x.id === id) : null;
+            openModal(d ? 'Edit Wisata' : 'Tambah Wisata', `
+    <form onsubmit="saveDestModal(event, ${id || 'null'})" novalidate>
+      ${['name:Nama:text', 'region:Slug Wilayah:text', 'description:Deskripsi:text', 'price_label:Label Harga:text', 'price:Harga Dasar:number', 'price_max:Harga Plus:number', 'price_weekend:Harga Weekend:number', 'daily_quota:Kuota/Hari:number'].map(f => {
+                const [key, label, type] = f.split(':');
+                return `<div class="form-group"><label class="form-label" for="df_${key}">${label}</label><input class="form-input" id="df_${key}" type="${type}" value="${d ? esc(d[key] ?? '') : ''}" aria-label="${label}"></div>`;
+            }).join('')}
+      <button class="btn btn-primary" style="width:100%;" type="submit">${d ? 'Simpan' : 'Tambah'}</button>
+    </form>
+  `);
+        };
+
+        window.saveDestModal = async function (e, id) {
+            e.preventDefault();
+            const fields = ['name', 'region', 'description', 'price_label', 'price', 'price_max', 'price_weekend', 'daily_quota'];
+            const body = {};
+            fields.forEach(f => {
+                const v = document.getElementById(`df_${f}`)?.value;
+                body[f] = ['price', 'price_max', 'price_weekend', 'daily_quota'].includes(f) ? Number(v) : v;
+            });
+            if (!body.name || !body.region) { toast('Nama dan region wajib diisi', 'error'); return; }
+            try {
+                const headers = { 'X-Admin-Token': 'admin123' };
+                if (id) await api(`/destinations/${id}`, { method: 'PUT', body: JSON.stringify(body), headers: { ...headers } });
+                else await api('/destinations', { method: 'POST', body: JSON.stringify(body), headers: { ...headers } });
+                closeModal(); toast('Berhasil disimpan ✓', 'success'); viewAdmin();
+            } catch (ex) { toast(ex.message, 'error'); }
+        };
+
+        window.deleteDest = async function (id) {
+            openModal('Hapus Wisata', `
+    <p style="color:var(--text-2);margin-bottom:1.5rem">Yakin ingin menghapus wisata ini? Tindakan ini tidak bisa dibatalkan.</p>
+    <div style="display:flex;gap:0.75rem">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Batal</button>
+      <button class="btn btn-danger" style="flex:1" onclick="confirmDelete(${id})">Ya, Hapus</button>
+    </div>
+  `);
+        };
+
+        window.confirmDelete = async function (id) {
+            try {
+                await api(`/destinations/${id}`, { method: 'DELETE', headers: { 'X-Admin-Token': 'admin123' } });
+                closeModal(); toast('Wisata berhasil dihapus', 'success'); viewAdmin();
+            } catch (ex) { toast(ex.message, 'error'); }
+        };
+
+        /* ═══════════════════════════════════════════════════════════
+           ERROR STATE
+        ═══════════════════════════════════════════════════════ */
+        function showError(msg) {
+            app.innerHTML = `<div class="section" style="padding-top:calc(var(--nav-h)+2rem)"><div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>${msg || 'Terjadi kesalahan'}</h3><p>Coba muat ulang halaman</p><button class="btn btn-primary" style="margin-top:1rem" onclick="location.reload()">Muat Ulang</button></div></div>`;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           INIT
+        ═══════════════════════════════════════════════════════ */
+        tryRestoreSession().then(route);
+    </script>
+</body>
+
+</html>
