@@ -2,6 +2,7 @@
 import hmac, json, os, random, re, sqlite3, string, time, uuid
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+import webhooks
 
 from flask import Flask, Blueprint, g, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -606,6 +607,7 @@ def create_booking():
         (code, d['id'], visit.isoformat(), qty, tier, up, up * qty, name, email, b.get('phone', ''), 'PENDING', 0, None, now, now, u['id'], expires_at, 'web'))
     db().commit()
     b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
+    webhooks.emit_event('booking.created', b_resp)
     return jsonify(b_resp), 201
 
 @api_bp.get('/bookings')
@@ -695,6 +697,7 @@ def pay_booking(code):
         b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
         try: mailer.send_booking_update(b_resp)
         except Exception as ex: app.logger.error(f"Mailer error: {ex}")
+        webhooks.emit_event('booking.rescheduled', b_resp)
         return jsonify(b_resp)
     return err('Booking tidak dapat dibayar', 409)
 
@@ -751,6 +754,7 @@ def update_booking(code):
         b_resp = get_booking(code).json
         try: mailer.send_booking_update(b_resp)
         except Exception as ex: app.logger.error(f"Mailer error: {ex}")
+        webhooks.emit_event('booking.rescheduled', b_resp)
         return jsonify(b_resp)
     # Harga baru > harga lama: simpan pending, minta pembayaran selisih
     due = (new_up - old_up) * r['qty']
@@ -780,6 +784,7 @@ def refund(code):
     b_resp = get_booking(code).json
     try: mailer.send_booking_refund(b_resp)
     except Exception as ex: app.logger.error(f"Mailer error: {ex}")
+    webhooks.emit_event('booking.refunded', b_resp)
     return jsonify(b_resp)
 
 @api_bp.delete('/bookings/<code>')
@@ -862,6 +867,7 @@ def partner_create_booking():
     except Exception as ex:
         app.logger.error(f"Mailer error: {ex}")
         
+    webhooks.emit_event('booking.created', b_resp)
     return jsonify(b_resp), 201
 
 @api_bp.get('/partner/bookings/<code>')
@@ -966,6 +972,7 @@ def partner_update_booking(code):
     except Exception as ex:
         app.logger.error(f"Mailer error: {ex}")
         
+    webhooks.emit_event('booking.rescheduled', b_resp)
     return jsonify(b_resp), 200
 
 @api_bp.post('/partner/bookings/<code>/refund')
@@ -1001,6 +1008,7 @@ def partner_refund_booking(code):
     except Exception as ex:
         app.logger.error(f"Mailer error: {ex}")
         
+    webhooks.emit_event('booking.refunded', b_resp)
     return jsonify(b_resp), 200
 
 # ── OpenAPI Spec & Swagger UI ──────────────────────────────────────────────────

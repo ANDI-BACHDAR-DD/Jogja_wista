@@ -415,5 +415,180 @@ class TestPhase3OpenAPI(unittest.TestCase):
         self.assertIn('/api/v1/openapi.json', html)
 
 
+class TestPhase4Webhooks(unittest.TestCase):
+    WEBHOOK_SECRET = "webhook-test-secret-key-12345"
+    HOTEL_KEY = "hotel-service-test-api-key-12345"
+
+    class MockResp:
+        def __init__(self, status=200):
+            self.status = status
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ['PARTNER_KEYS'] = f"hotel:{cls.HOTEL_KEY}"
+        os.environ['WEBHOOK_URLS'] = "https://hotel.local/hook,https://itinerary.local/hook"
+        os.environ['WEBHOOK_SECRET'] = cls.WEBHOOK_SECRET
+        os.environ['WEBHOOK_SYNC'] = "1"
+        os.environ['WEBHOOK_INCLUDE_PII'] = "0"
+        app.parse_partner_keys()
+
+    @classmethod
+    def tearDownClass(cls):
+        import sqlite3 as sq
+        c = sq.connect('wisata.db')
+        c.execute("DELETE FROM bookings WHERE source != 'web'")
+        c.commit()
+        c.close()
+
+    def _future_date(self, days=80):
+        from datetime import date, timedelta
+        return (date.today() + timedelta(days=days)).isoformat()
+
+    def test_01_webhook_created_and_hmac_signature(self):
+        from unittest.mock import patch
+        import json, hmac, hashlib
+        os.environ['WEBHOOK_INCLUDE_PII'] = "0"
+
+        captured = []
+        def fake_urlopen(req, timeout=5):
+            captured.append((req, req.data, dict(req.headers)))
+            return self.MockResp(200)
+
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen), patch('mailer.send_email_background'):
+            r = client.post('/api/v1/partner/bookings', json={
+                "destination_id": 1,
+                "visit_date": self._future_date(81),
+                "qty": 2,
+                "external_ref": f"WH-CR-{uuid.uuid4().hex[:8]}",
+                "customer": {"name": "Webhook Tester", "email": "wh@test.com", "phone": "081234"}
+            }, headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+            self.assertEqual(r.status_code, 201)
+
+        # 2 webhook URLs configured -> 2 calls
+        self.assertEqual(len(captured), 2)
+        req, raw_body, headers = captured[0]
+
+        event_header = req.get_header('X-wisata-event') or headers.get('X-Wisata-Event')
+        self.assertEqual(event_header, 'booking.created')
+
+        sig_header = req.get_header('X-wisata-signature') or headers.get('X-Wisata-Signature')
+        self.assertTrue(sig_header.startswith('sha256='))
+
+        # Re-compute HMAC and verify
+        expected_sig = "sha256=" + hmac.new(self.WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
+        self.assertEqual(sig_header, expected_sig)
+
+        # Verify body
+        payload = json.loads(raw_body.decode('utf-8'))
+        self.assertTrue(payload['id'].startswith('evt_'))
+        self.assertEqual(payload['type'], 'booking.created')
+        self.assertIn('created_at', payload)
+        self.assertIn('data', payload)
+        # PII should NOT be present
+        self.assertNotIn('name', payload['data'])
+        self.assertNotIn('email', payload['data'])
+        self.assertNotIn('phone', payload['data'])
+
+    def test_02_webhook_with_pii(self):
+        from unittest.mock import patch
+        import json
+        os.environ['WEBHOOK_INCLUDE_PII'] = "1"
+
+        captured = []
+        def fake_urlopen(req, timeout=5):
+            captured.append(req.data)
+            return self.MockResp(200)
+
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen), patch('mailer.send_email_background'):
+            r = client.post('/api/v1/partner/bookings', json={
+                "destination_id": 1,
+                "visit_date": self._future_date(82),
+                "qty": 1,
+                "external_ref": f"WH-PII-{uuid.uuid4().hex[:8]}",
+                "customer": {"name": "Alice PII", "email": "alice@pii.com", "phone": "089999"}
+            }, headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+            self.assertEqual(r.status_code, 201)
+
+        payload = json.loads(captured[0].decode('utf-8'))
+        self.assertEqual(payload['data']['name'], 'Alice PII')
+        self.assertEqual(payload['data']['email'], 'alice@pii.com')
+        self.assertEqual(payload['data']['phone'], '089999')
+
+    def test_03_webhook_rescheduled_and_refunded(self):
+        from unittest.mock import patch
+        os.environ['WEBHOOK_INCLUDE_PII'] = "0"
+
+        captured = []
+        def fake_urlopen(req, timeout=5):
+            captured.append(req.get_header('X-wisata-event') or req.headers.get('X-Wisata-Event'))
+            return self.MockResp(200)
+
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen), patch('mailer.send_email_background'):
+            # 1. Create
+            r = client.post('/api/v1/partner/bookings', json={
+                "destination_id": 1,
+                "visit_date": self._future_date(83),
+                "qty": 1,
+                "external_ref": f"WH-FLOW-{uuid.uuid4().hex[:8]}",
+                "customer": {"name": "Flow", "email": "flow@test.com", "phone": "081"}
+            }, headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+            code = r.get_json()['code']
+            captured.clear()
+
+            # 2. Reschedule
+            r_upd = client.put(f'/api/v1/partner/bookings/{code}', json={"visit_date": self._future_date(85)},
+                               headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+            self.assertEqual(r_upd.status_code, 200)
+            self.assertIn('booking.rescheduled', captured)
+            captured.clear()
+
+            # 3. Refund
+            r_ref = client.post(f'/api/v1/partner/bookings/{code}/refund', json={"reason": "Customer cancelled"},
+                                headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+            self.assertEqual(r_ref.status_code, 200)
+            self.assertIn('booking.refunded', captured)
+
+    def test_04_webhook_network_failure_does_not_fail_booking(self):
+        from unittest.mock import patch
+        import urllib.error
+
+        def failing_urlopen(req, timeout=5):
+            raise urllib.error.URLError("Connection refused")
+
+        with patch('urllib.request.urlopen', side_effect=failing_urlopen), patch('mailer.send_email_background'):
+            r = client.post('/api/v1/partner/bookings', json={
+                "destination_id": 1,
+                "visit_date": self._future_date(86),
+                "qty": 1,
+                "external_ref": f"WH-FAIL-{uuid.uuid4().hex[:8]}",
+                "customer": {"name": "Fail Test", "email": "fail@test.com", "phone": "081"}
+            }, headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+            # Booking must still succeed
+            self.assertEqual(r.status_code, 201)
+
+    def test_05_webhook_without_secret_does_not_send(self):
+        from unittest.mock import patch
+        saved_secret = os.environ.get('WEBHOOK_SECRET', '')
+        os.environ['WEBHOOK_SECRET'] = ''
+
+        try:
+            with patch('urllib.request.urlopen') as mock_urlopen, patch('mailer.send_email_background'):
+                r = client.post('/api/v1/partner/bookings', json={
+                    "destination_id": 1,
+                    "visit_date": self._future_date(87),
+                    "qty": 1,
+                    "external_ref": f"WH-NOSEC-{uuid.uuid4().hex[:8]}",
+                    "customer": {"name": "No Sec", "email": "nosec@test.com", "phone": "081"}
+                }, headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+                self.assertEqual(r.status_code, 201)
+                mock_urlopen.assert_not_called()
+        finally:
+            os.environ['WEBHOOK_SECRET'] = saved_secret
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
