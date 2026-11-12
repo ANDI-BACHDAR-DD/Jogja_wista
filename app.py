@@ -3,6 +3,7 @@ import hmac, json, os, random, re, sqlite3, string, time, uuid
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 import webhooks
+import integrations
 
 from flask import Flask, Blueprint, g, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -1010,6 +1011,31 @@ def partner_refund_booking(code):
         
     webhooks.emit_event('booking.refunded', b_resp)
     return jsonify(b_resp), 200
+
+# ── Integrations Endpoints ─────────────────────────────────────────────────────
+@api_bp.get('/integrations/hotels')
+def integration_hotels():
+    try:
+        data = integrations.get_hotels(request.args.to_dict())
+        return jsonify(source='hotel', data=data), 200
+    except integrations.IntegrationNotConfiguredError:
+        return err('Integrasi hotel belum dikonfigurasi', 503, 'INTEGRATION_NOT_CONFIGURED')
+    except integrations.UpstreamError:
+        return err('Gagal menghubungi layanan hotel', 502, 'UPSTREAM_ERROR')
+
+@api_bp.get('/integrations/transport')
+def integration_transport():
+    try:
+        data = integrations.get_transport(request.args.to_dict())
+        return jsonify(source='transport', data=data), 200
+    except integrations.IntegrationNotConfiguredError:
+        return err('Integrasi transportasi belum dikonfigurasi', 503, 'INTEGRATION_NOT_CONFIGURED')
+    except integrations.UpstreamError:
+        return err('Gagal menghubungi layanan transportasi', 502, 'UPSTREAM_ERROR')
+
+@api_bp.get('/integrations/status')
+def integration_status():
+    return jsonify(integrations.get_status()), 200
 
 # ── OpenAPI Spec & Swagger UI ──────────────────────────────────────────────────
 import openapi_spec

@@ -590,5 +590,130 @@ class TestPhase4Webhooks(unittest.TestCase):
             os.environ['WEBHOOK_SECRET'] = saved_secret
 
 
+class TestPhase5Integrations(unittest.TestCase):
+    class MockResp:
+        def __init__(self, data, status=200):
+            import json
+            self.data = json.dumps(data).encode('utf-8') if isinstance(data, (dict, list)) else data
+            self.status = status
+        def read(self):
+            return self.data
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+
+    def setUp(self):
+        import integrations
+        integrations._cache.clear()
+
+    def test_01_unconfigured_returns_503(self):
+        os.environ.pop('HOTEL_API_URL', None)
+        os.environ.pop('TRANSPORT_API_URL', None)
+
+        r_hotel = client.get('/api/v1/integrations/hotels')
+        self.assertEqual(r_hotel.status_code, 503)
+        self.assertEqual(r_hotel.get_json()['code'], 'INTEGRATION_NOT_CONFIGURED')
+
+        r_trans = client.get('/api/v1/integrations/transport')
+        self.assertEqual(r_trans.status_code, 503)
+        self.assertEqual(r_trans.get_json()['code'], 'INTEGRATION_NOT_CONFIGURED')
+
+    def test_02_successful_call_wraps_response(self):
+        from unittest.mock import patch
+        os.environ['HOTEL_API_URL'] = "https://mock-hotel.local"
+        os.environ['HOTEL_API_KEY'] = "mock-hotel-key-12345"
+
+        mock_data = {"hotels": [{"id": 1, "name": "Hotel Jogja Asri"}]}
+        captured = []
+
+        def fake_urlopen(req, timeout=5):
+            captured.append(req)
+            return self.MockResp(mock_data, 200)
+
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen):
+            r = client.get('/api/v1/integrations/hotels?region=kota-yogyakarta&check_in=2026-11-20&check_out=2026-11-22')
+            self.assertEqual(r.status_code, 200)
+            res = r.get_json()
+            self.assertEqual(res['source'], 'hotel')
+            self.assertEqual(res['data'], mock_data)
+
+            self.assertEqual(len(captured), 1)
+            req = captured[0]
+            self.assertIn("mock-hotel.local/api/v1/hotels", req.full_url)
+            self.assertIn("check_in=2026-11-20", req.full_url)
+            self.assertIn("region=kota-yogyakarta", req.full_url)
+            auth_header = req.get_header('Authorization')
+            self.assertEqual(auth_header, "Bearer mock-hotel-key-12345")
+
+    def test_03_upstream_failure_returns_502_no_leak(self):
+        from unittest.mock import patch
+        import urllib.error
+
+        secret_url = "https://internal-dns-secret.corp:8443"
+        secret_key = "secret-super-key-XYZ"
+        os.environ['TRANSPORT_API_URL'] = secret_url
+        os.environ['TRANSPORT_API_KEY'] = secret_key
+
+        def failing_urlopen(req, timeout=5):
+            raise urllib.error.URLError("Upstream timeout")
+
+        with patch('urllib.request.urlopen', side_effect=failing_urlopen):
+            r = client.get('/api/v1/integrations/transport?origin=jogja&destination=solo')
+            self.assertEqual(r.status_code, 502)
+            data = r.get_json()
+            self.assertEqual(data['code'], 'UPSTREAM_ERROR')
+
+            # Ensure secret URL and key are never leaked in response
+            raw_text = r.get_data(as_text=True)
+            self.assertNotIn(secret_url, raw_text)
+            self.assertNotIn(secret_key, raw_text)
+            self.assertNotIn("internal-dns-secret", raw_text)
+
+    def test_04_cache_60s_active(self):
+        from unittest.mock import patch
+        import integrations
+        integrations._cache.clear()
+
+        os.environ['HOTEL_API_URL'] = "https://mock-hotel.local"
+        call_count = [0]
+
+        def counting_urlopen(req, timeout=5):
+            call_count[0] += 1
+            return self.MockResp({"hotels": [{"id": 1}]}, 200)
+
+        with patch('urllib.request.urlopen', side_effect=counting_urlopen):
+            # First request -> hits upstream
+            r1 = client.get('/api/v1/integrations/hotels?region=sleman')
+            self.assertEqual(r1.status_code, 200)
+            self.assertEqual(call_count[0], 1)
+
+            # Second identical request -> served from cache
+            r2 = client.get('/api/v1/integrations/hotels?region=sleman')
+            self.assertEqual(r2.status_code, 200)
+            self.assertEqual(call_count[0], 1)
+            self.assertEqual(r1.get_json(), r2.get_json())
+
+    def test_05_status_endpoint(self):
+        from unittest.mock import patch
+        os.environ['HOTEL_API_URL'] = "https://hotel.local"
+        os.environ['TRANSPORT_API_URL'] = ""
+
+        def ping_urlopen(req, timeout=3):
+            return self.MockResp({"status": "ok"}, 200)
+
+        with patch('urllib.request.urlopen', side_effect=ping_urlopen):
+            r = client.get('/api/v1/integrations/status')
+            self.assertEqual(r.status_code, 200)
+            st = r.get_json()
+            self.assertTrue(st['hotel']['configured'])
+            self.assertTrue(st['hotel']['reachable'])
+            self.assertFalse(st['transport']['configured'])
+            self.assertFalse(st['transport']['reachable'])
+
+            raw_text = r.get_data(as_text=True)
+            self.assertNotIn("hotel.local", raw_text)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

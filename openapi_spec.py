@@ -608,6 +608,60 @@ def get_openapi_spec():
                         "422": {"description": "Refund tidak dapat diajukan (hari-H atau lampau)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
                     }
                 }
+            },
+            "/api/v1/integrations/hotels": {
+                "get": {
+                    "tags": ["Integrations", "Public"],
+                    "summary": "Pencarian hotel melalui Hotel Service",
+                    "parameters": [
+                        {"name": "region", "in": "query", "schema": {"type": "string"}, "description": "Slug wilayah"},
+                        {"name": "check_in", "in": "query", "schema": {"type": "string", "format": "date"}},
+                        {"name": "check_out", "in": "query", "schema": {"type": "string", "format": "date"}}
+                    ],
+                    "responses": {
+                        "200": {"description": "Daftar hotel terbungkus", "content": {"application/json": {"schema": {"type": "object", "properties": {"source": {"type": "string", "example": "hotel"}, "data": {"type": "object"}}}}}},
+                        "502": {"description": "Layanan hotel tidak dapat dihubungi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "503": {"description": "Integrasi hotel belum dikonfigurasi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+                    }
+                }
+            },
+            "/api/v1/integrations/transport": {
+                "get": {
+                    "tags": ["Integrations", "Public"],
+                    "summary": "Pencarian rute melalui Transport Service",
+                    "parameters": [
+                        {"name": "origin", "in": "query", "schema": {"type": "string"}},
+                        {"name": "destination", "in": "query", "schema": {"type": "string"}},
+                        {"name": "date", "in": "query", "schema": {"type": "string", "format": "date"}}
+                    ],
+                    "responses": {
+                        "200": {"description": "Daftar rute terbungkus", "content": {"application/json": {"schema": {"type": "object", "properties": {"source": {"type": "string", "example": "transport"}, "data": {"type": "object"}}}}}},
+                        "502": {"description": "Layanan transportasi tidak dapat dihubungi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "503": {"description": "Integrasi transportasi belum dikonfigurasi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+                    }
+                }
+            },
+            "/api/v1/integrations/status": {
+                "get": {
+                    "tags": ["Integrations", "Public"],
+                    "summary": "Status konfigurasi dan ketersediaan layanan integrasi",
+                    "responses": {
+                        "200": {
+                            "description": "Status integrasi",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "hotel": {"type": "object", "properties": {"configured": {"type": "boolean"}, "reachable": {"type": "boolean"}}},
+                                            "transport": {"type": "object", "properties": {"configured": {"type": "boolean"}, "reachable": {"type": "boolean"}}}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
