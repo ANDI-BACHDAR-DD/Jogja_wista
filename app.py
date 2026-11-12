@@ -1,5 +1,5 @@
 """Wisata Jogja - Backend REST API (Flask + SQLite). Jalankan: python app.py"""
-import json, os, random, re, sqlite3, string, time, uuid
+import hmac, json, os, random, re, sqlite3, string, time, uuid
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
@@ -97,6 +97,15 @@ def init():
         c.execute("ALTER TABLE bookings ADD COLUMN pending_unit_price INTEGER")
     if 'due_amount' not in cols:
         c.execute("ALTER TABLE bookings ADD COLUMN due_amount INTEGER")
+    if 'source' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN source TEXT DEFAULT 'web'")
+        c.execute("UPDATE bookings SET source='web' WHERE source IS NULL")
+    if 'external_ref' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN external_ref TEXT")
+    if 'idempotency_key' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN idempotency_key TEXT")
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_source_external_ref ON bookings(source, external_ref) WHERE external_ref IS NOT NULL")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_bookings_idempotency ON bookings(source, idempotency_key) WHERE idempotency_key IS NOT NULL")
     c.commit()
     # Isi data awal (idempotent: hanya jika tabel kosong)
     if not c.execute('SELECT 1 FROM regions').fetchone():
@@ -189,8 +198,64 @@ def admin_only():
     u = current_user()
     return u and u['role'] == 'admin'
 
+# ── Partner Auth & Rate Limiting ──────────────────────────────────────────────
+_partner_reqs = defaultdict(list)
+
+def parse_partner_keys():
+    raw = os.getenv('PARTNER_KEYS', '').strip()
+    m = {}
+    if raw:
+        for item in raw.split(','):
+            item = item.strip()
+            if not item or ':' not in item:
+                continue
+            partner, key = item.split(':', 1)
+            partner, key = partner.strip(), key.strip()
+            if len(key) < 24:
+                print(f"⚠️  Peringatan: Kunci partner '{partner}' kurang dari 24 karakter (diabaikan).")
+            else:
+                m[partner] = key
+    return m
+
+# Run once at startup
+parse_partner_keys()
+
+def current_partner():
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return None
+    token = auth[7:].strip()
+    partner_map = parse_partner_keys()
+    for partner, key in partner_map.items():
+        if hmac.compare_digest(key, token):
+            return partner
+    return None
+
+def check_partner_rate_limit(partner_name):
+    now = time.time()
+    _partner_reqs[partner_name] = [t for t in _partner_reqs[partner_name] if now - t < 60]
+    if len(_partner_reqs[partner_name]) >= 120:
+        oldest = _partner_reqs[partner_name][0]
+        retry_after = max(1, int(60 - (now - oldest)))
+        return False, retry_after
+    _partner_reqs[partner_name].append(now)
+    return True, 0
+
+def require_partner():
+    p = current_partner()
+    if not p:
+        return None, err('Partner API key tidak valid atau tidak disertakan', 401)
+    allowed, retry_after = check_partner_rate_limit(p)
+    if not allowed:
+        resp, status = err('Batas permintaan partner terlampaui (120 req/menit)', 429)
+        resp.headers['Retry-After'] = str(retry_after)
+        return None, (resp, status)
+    return p, None
+
 def current_user():
-    """Ambil user dari Bearer token. Return None bila tidak ada/expired."""
+    """Ambil user dari Bearer token. Resolver mencoba kunci partner dulu, lalu token pengguna."""
+    if current_partner():
+        return None
     auth = request.headers.get('Authorization', '')
     if not auth.startswith('Bearer '):
         return None
@@ -439,13 +504,75 @@ def calendar(i):
         d += timedelta(days=1)
     return jsonify(out)
 
+@api_bp.get('/destinations/<int:i>/availability')
+def destination_availability(i):
+    expire_stale()
+    d = db().execute('SELECT * FROM destinations WHERE id=?', (i,)).fetchone()
+    if not d:
+        return err('Wisata tidak ditemukan', 404)
+    date_str = request.args.get('date', '').strip()
+    if not date_str:
+        return err('Parameter date wajib diisi (format YYYY-MM-DD)', 400)
+    visit, e = parse_visit(date_str)
+    if e:
+        return err(e, 400)
+    try:
+        qty = int(request.args.get('qty', 1))
+        if qty < 1:
+            return err('qty minimal 1', 400)
+    except (ValueError, TypeError):
+        return err('qty harus berupa angka bulat', 400)
+    tier = request.args.get('tier', 'base')
+    rem = max(0, d['daily_quota'] - sold(d['id'], visit.isoformat()))
+    avail = (rem >= qty)
+    up = unit_price(d, visit, tier)
+    is_we = is_weekend_date(visit)
+    return jsonify({
+        "destination_id": d['id'],
+        "date": visit.isoformat(),
+        "qty": qty,
+        "available": avail,
+        "remaining": rem,
+        "unit_price": up,
+        "total": up * qty,
+        "currency": "IDR",
+        "is_weekend": is_we
+    })
+
 # ── Pemesanan ───────────────────────────────────────────────────────────────────
 def booking(row):
     b = dict(row); v = date.fromisoformat(b['visit_date']); days = (v - date.today()).days
     b['refundable_percent'] = refund_percent(days) if b['status'] == 'PAID' else 0
     b['destination'] = db().execute('SELECT name, region FROM destinations WHERE id=?', (b['destination_id'],)).fetchone()
     b['destination'] = dict(b['destination']) if b['destination'] else None
+    if 'source' not in b or b['source'] is None:
+        b['source'] = 'web'
     return b
+
+def partner_booking(row):
+    b = dict(row)
+    d = db().execute('SELECT name, region FROM destinations WHERE id=?', (b['destination_id'],)).fetchone()
+    dest_name = d['name'] if d else ''
+    return {
+        "code": b['code'],
+        "destination_id": b['destination_id'],
+        "destination_name": dest_name,
+        "visit_date": b['visit_date'],
+        "qty": b['qty'],
+        "unit_price": b['unit_price'],
+        "total": b['total'],
+        "status": b['status'],
+        "source": b.get('source') or 'web',
+        "external_ref": b.get('external_ref'),
+        "refund_amount": b.get('refund_amount') or 0,
+        "created_at": b['created_at'],
+        "destination": {"name": dest_name, "region": d['region'] if d else ''} if d else None,
+        "name": b.get('name'),
+        "email": b.get('email'),
+        "phone": b.get('phone'),
+        "tier": b.get('tier', 'base'),
+        "updated_at": b.get('updated_at')
+    }
 
 def refund_percent(days_left):
     return 100 if days_left >= 3 else 50 if days_left >= 1 else 0
@@ -475,8 +602,8 @@ def create_booking():
     if sold(d['id'], visit.isoformat()) + qty > d['daily_quota']: return err('Kuota tanggal tersebut tidak mencukupi', 409)
     up = unit_price(d, visit, tier); now = now_iso(); code = new_code()
     expires_at = (datetime.now() + timedelta(minutes=PAYMENT_WINDOW_MIN)).isoformat(timespec='seconds')
-    db().execute('INSERT INTO bookings(code,destination_id,visit_date,qty,tier,unit_price,total,name,email,phone,status,refund_amount,refund_reason,created_at,updated_at,user_id,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        (code, d['id'], visit.isoformat(), qty, tier, up, up * qty, name, email, b.get('phone', ''), 'PENDING', 0, None, now, now, u['id'], expires_at))
+    db().execute('INSERT INTO bookings(code,destination_id,visit_date,qty,tier,unit_price,total,name,email,phone,status,refund_amount,refund_reason,created_at,updated_at,user_id,expires_at,source) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        (code, d['id'], visit.isoformat(), qty, tier, up, up * qty, name, email, b.get('phone', ''), 'PENDING', 0, None, now, now, u['id'], expires_at, 'web'))
     db().commit()
     b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
     return jsonify(b_resp), 201
@@ -659,6 +786,222 @@ def refund(code):
 def delete_booking(code):
     if not admin_only(): return err('Akses ditolak', 403)
     db().execute('DELETE FROM bookings WHERE code=?', (code,)); db().commit(); return '', 204
+
+# ── Partner Endpoints ───────────────────────────────────────────────────────────
+@api_bp.post('/partner/bookings')
+def partner_create_booking():
+    p, err_resp = require_partner()
+    if err_resp: return err_resp
+    
+    idem_key = request.headers.get('Idempotency-Key', '').strip()
+    if idem_key:
+        row = db().execute('SELECT * FROM bookings WHERE source=? AND idempotency_key=?', (p, idem_key)).fetchone()
+        if row:
+            return jsonify(partner_booking(row)), 200
+
+    b = request.get_json(force=True) or {}
+    dest_id = b.get('destination_id')
+    d = db().execute('SELECT * FROM destinations WHERE id=?', (dest_id,)).fetchone()
+    if not d:
+        return err('Wisata tidak ditemukan', 404)
+        
+    visit, e = parse_visit(b.get('visit_date', ''))
+    if e:
+        return err(e, 400)
+        
+    try:
+        qty = int(b.get('qty', 0) or 0)
+        if not 1 <= qty <= 20:
+            return err('Jumlah tiket 1-20', 400)
+    except (ValueError, TypeError):
+        return err('Jumlah tiket harus berupa angka 1-20', 400)
+        
+    ext_ref = (b.get('external_ref') or '').strip()
+    if not ext_ref:
+        return err('external_ref wajib diisi', 400)
+        
+    existing_ext = db().execute('SELECT 1 FROM bookings WHERE source=? AND external_ref=?', (p, ext_ref)).fetchone()
+    if existing_ext:
+        return err('external_ref sudah digunakan', 409)
+        
+    cust = b.get('customer') or {}
+    name = (cust.get('name') or '').strip()
+    email = (cust.get('email') or '').strip().lower()
+    phone = (cust.get('phone') or '').strip()
+    if not name or not email or '@' not in email:
+        return err('Nama dan email valid wajib diisi', 400)
+        
+    tier = 'plus' if b.get('tier') == 'plus' and d['price_max'] else 'base'
+    if sold(d['id'], visit.isoformat()) + qty > d['daily_quota']:
+        return err('Kuota tanggal tersebut tidak mencukupi', 409)
+        
+    up = unit_price(d, visit, tier)
+    total = up * qty
+    now = now_iso()
+    code = new_code()
+    
+    db().execute("""INSERT INTO bookings(
+        code, destination_id, visit_date, qty, tier, unit_price, total,
+        name, email, phone, status, refund_amount, refund_reason,
+        created_at, updated_at, user_id, expires_at, paid_at,
+        payment_method, source, external_ref, idempotency_key
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+        code, d['id'], visit.isoformat(), qty, tier, up, total,
+        name, email, phone, 'PAID', 0, None,
+        now, now, None, None, now,
+        'partner', p, ext_ref, idem_key or None
+    ))
+    db().commit()
+    
+    row = db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone()
+    b_resp = partner_booking(row)
+    
+    import mailer
+    try:
+        mailer.send_booking_success(b_resp)
+    except Exception as ex:
+        app.logger.error(f"Mailer error: {ex}")
+        
+    return jsonify(b_resp), 201
+
+@api_bp.get('/partner/bookings/<code>')
+def partner_get_booking(code):
+    p, err_resp = require_partner()
+    if err_resp: return err_resp
+    
+    row = db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone()
+    if not row or row['source'] != p:
+        return err('Booking tidak ditemukan', 404)
+        
+    return jsonify(partner_booking(row)), 200
+
+@api_bp.get('/partner/bookings')
+def partner_list_bookings():
+    p, err_resp = require_partner()
+    if err_resp: return err_resp
+    
+    ext_ref = request.args.get('external_ref', '').strip()
+    where = ['source=?']
+    args = [p]
+    if ext_ref:
+        where.append('external_ref=?')
+        args.append(ext_ref)
+        
+    where_sql = ' AND '.join(where)
+    count_row = db().execute(f'SELECT COUNT(*) FROM bookings WHERE {where_sql}', args).fetchone()
+    total_count = count_row[0] if count_row else 0
+    
+    try:
+        limit = int(request.args.get('limit', 100))
+    except (ValueError, TypeError):
+        limit = 100
+    limit = max(1, min(limit, 200))
+    try:
+        offset = int(request.args.get('offset', 0))
+    except (ValueError, TypeError):
+        offset = 0
+    offset = max(0, offset)
+    
+    sql = f'SELECT * FROM bookings WHERE {where_sql} ORDER BY created_at DESC LIMIT ? OFFSET ?'
+    rows = db().execute(sql, args + [limit, offset]).fetchall()
+    
+    resp = jsonify([partner_booking(r) for r in rows])
+    resp.headers['X-Total-Count'] = str(total_count)
+    return resp
+
+@api_bp.put('/partner/bookings/<code>')
+def partner_update_booking(code):
+    p, err_resp = require_partner()
+    if err_resp: return err_resp
+    
+    r = one(code)
+    if not r or r['source'] != p:
+        return err('Booking tidak ditemukan', 404)
+    if r['status'] != 'PAID':
+        return err('Booking tidak dapat diubah', 409)
+        
+    b = request.get_json(silent=True) or {}
+    extra = set(b.keys()) - {'visit_date'}
+    if extra:
+        return err('Hanya tanggal kunjungan yang dapat diubah', 400)
+    if 'visit_date' not in b:
+        return err('visit_date wajib diisi', 400)
+        
+    d = db().execute('SELECT * FROM destinations WHERE id=?', (r['destination_id'],)).fetchone()
+    tomorrow = date.today() + timedelta(days=1)
+    try:
+        old_visit = date.fromisoformat(r['visit_date'])
+    except Exception:
+        return err('Tanggal lama tidak valid', 400)
+    try:
+        new_visit = date.fromisoformat(b['visit_date'])
+    except Exception:
+        return err('Tanggal kunjungan tidak valid (format YYYY-MM-DD)', 400)
+        
+    if old_visit < tomorrow:
+        return err('Pesanan pada hari-H tidak dapat diubah tanggalnya', 400)
+    if new_visit < tomorrow:
+        return err('Tanggal baru tidak boleh hari ini atau lampau', 400)
+        
+    if sold(d['id'], new_visit.isoformat(), code) + r['qty'] > d['daily_quota']:
+        return err('Kuota tidak mencukupi', 409)
+        
+    now = now_iso()
+    new_up = unit_price(d, new_visit, r['tier'])
+    old_up = r['unit_price']
+    
+    up_to_use = old_up if new_up <= old_up else new_up
+    total_to_use = up_to_use * r['qty'] if new_up > old_up else r['total']
+    
+    db().execute('UPDATE bookings SET visit_date=?, unit_price=?, total=?, updated_at=? WHERE code=?',
+        (new_visit.isoformat(), up_to_use, total_to_use, now, code))
+    db().commit()
+    
+    row = db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone()
+    b_resp = partner_booking(row)
+    
+    import mailer
+    try:
+        mailer.send_booking_update(b_resp)
+    except Exception as ex:
+        app.logger.error(f"Mailer error: {ex}")
+        
+    return jsonify(b_resp), 200
+
+@api_bp.post('/partner/bookings/<code>/refund')
+def partner_refund_booking(code):
+    p, err_resp = require_partner()
+    if err_resp: return err_resp
+    
+    r = one(code)
+    if not r or r['source'] != p:
+        return err('Booking tidak ditemukan', 404)
+    if r['status'] != 'PAID':
+        return err('Booking sudah dibatalkan / di-refund', 409)
+        
+    days = (date.fromisoformat(r['visit_date']) - date.today()).days
+    pct = refund_percent(days)
+    if pct == 0:
+        return err('Refund tidak tersedia pada hari kunjungan atau setelahnya', 422)
+        
+    amount = r['total'] * pct // 100
+    reason = (request.get_json(silent=True) or {}).get('reason', '')
+    now = now_iso()
+    
+    db().execute("UPDATE bookings SET status='REFUNDED', refund_amount=?, refund_reason=?, updated_at=? WHERE code=?",
+        (amount, reason, now, code))
+    db().commit()
+    
+    row = db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone()
+    b_resp = partner_booking(row)
+    
+    import mailer
+    try:
+        mailer.send_booking_refund(b_resp)
+    except Exception as ex:
+        app.logger.error(f"Mailer error: {ex}")
+        
+    return jsonify(b_resp), 200
 
 @app.get('/')
 def index():
