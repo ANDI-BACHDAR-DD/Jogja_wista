@@ -78,3 +78,4 @@ def emit_event(event, payload, sync=False):
 
     except Exception as e:
         logger.error(f"Error emitting webhook event {event}: {e}")
+

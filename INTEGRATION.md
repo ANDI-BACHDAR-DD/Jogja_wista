@@ -387,3 +387,4 @@ Berikut konfigurasi environment yang tersedia:
    - **PENTING**: Data di `/tmp` akan di-reset saat cold start atau instance recycling oleh Vercel. Untuk produksi persisten penuh, disarankan menghubungkan SQLite ke storage terdistribusi (seperti Turso LibSQL) atau bermigrasi ke database PostgreSQL eksternal (Supabase, Neon, RDS).
 2. **Pengiriman Webhook Sinkron**:
    - Di environment Vercel, fungsi background thread daemon dimatikan segera setelah response HTTP selesai. Oleh karena itu, pengiriman webhook di Vercel secara otomatis berjalan sinkron (`urllib.request` dengan timeout singkat 5s dan 2x retry) agar notifikasi terkirim sebelum container membeku.
+
