@@ -1,9 +1,10 @@
 """Wisata Jogja - Backend REST API (Flask + SQLite). Jalankan: python app.py"""
-import json, os, random, re, sqlite3, string, time
+import json, os, random, re, sqlite3, string, time, uuid
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-from flask import Flask, g, jsonify, request, send_from_directory
+from flask import Flask, Blueprint, g, jsonify, request, send_from_directory
+from werkzeug.exceptions import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── Konfigurasi ────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ if ADMIN_PASSWORD == 'Admin12345':
     print("⚠️  Gunakan env ADMIN_PASSWORD untuk mengganti password admin default.")
 
 app = Flask(__name__, static_folder=None, static_url_path=None)
+api_bp = Blueprint('api', __name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
@@ -108,11 +110,77 @@ def init():
             ('Admin', ADMIN_EMAIL, generate_password_hash(ADMIN_PASSWORD), 'admin', datetime.now().isoformat(timespec='seconds')))
     c.commit(); c.close()
 
-# ── Helpers ─────────────────────────────────────────────────────────────────────
+# ── Error Codes & Helpers ────────────────────────────────────────────────────────
+ERROR_CODES = {
+    400: 'VALIDATION_ERROR',
+    401: 'UNAUTHORIZED',
+    403: 'FORBIDDEN',
+    404: 'NOT_FOUND',
+    409: 'CONFLICT',
+    410: 'GONE',
+    422: 'UNPROCESSABLE',
+    429: 'RATE_LIMITED',
+    500: 'INTERNAL_ERROR',
+    502: 'UPSTREAM_ERROR',
+    503: 'INTEGRATION_NOT_CONFIGURED',
+}
+
 def dest(row):
     d = dict(row); d['photos'] = json.loads(d['photos'] or '[]'); return d
 
-def err(msg, code=400): return jsonify(error=msg), code
+def err(msg, code=400, err_code=None):
+    c = err_code or ERROR_CODES.get(code, 'INTERNAL_ERROR' if code >= 500 else 'VALIDATION_ERROR')
+    return jsonify(error=msg, code=c), code
+
+@app.errorhandler(404)
+def handle_404(e):
+    return jsonify(error="Tidak ditemukan", code="NOT_FOUND"), 404
+
+@app.errorhandler(405)
+def handle_405(e):
+    return jsonify(error="Metode tidak diizinkan", code="VALIDATION_ERROR"), 405
+
+@app.errorhandler(500)
+def handle_500(e):
+    return jsonify(error="Terjadi kesalahan pada server", code="INTERNAL_ERROR"), 500
+
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    code_str = ERROR_CODES.get(e.code, 'VALIDATION_ERROR' if e.code < 500 else 'INTERNAL_ERROR')
+    return jsonify(error=e.description or str(e), code=code_str), e.code
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    app.logger.error(f"Unhandled exception: {e}")
+    return jsonify(error="Terjadi kesalahan pada server", code="INTERNAL_ERROR"), 500
+
+@app.before_request
+def assign_request_id():
+    g.request_id = request.headers.get('X-Request-Id') or str(uuid.uuid4())
+    app.logger.info(f"[{g.request_id}] {request.method} {request.path}")
+
+@app.after_request
+def handle_cors_and_request_id(response):
+    req_id = getattr(g, 'request_id', None) or str(uuid.uuid4())
+    response.headers['X-Request-Id'] = req_id
+    
+    cors_env = os.environ.get('CORS_ORIGINS', '').strip()
+    origins = [o.strip() for o in cors_env.split(',') if o.strip()] if cors_env else []
+    
+    if request.path.startswith('/api'):
+        eff_method = request.headers.get('Access-Control-Request-Method', request.method)
+        if not origins:
+            if eff_method not in ('GET', 'HEAD'):
+                response.headers.pop('Access-Control-Allow-Origin', None)
+                response.headers.pop('Access-Control-Allow-Methods', None)
+                response.headers.pop('Access-Control-Allow-Headers', None)
+        else:
+            req_origin = request.headers.get('Origin')
+            if req_origin not in origins and '*' not in origins:
+                response.headers.pop('Access-Control-Allow-Origin', None)
+                response.headers.pop('Access-Control-Allow-Methods', None)
+                response.headers.pop('Access-Control-Allow-Headers', None)
+    return response
 
 def admin_only():
     """Menerima header X-Admin-Token ATAU token user dengan role admin."""
@@ -201,7 +269,7 @@ def safe_user(u):
     return {k: v for k, v in u.items() if k != 'password_hash'}
 
 # ── Auth Endpoints ──────────────────────────────────────────────────────────────
-@app.post('/api/auth/register')
+@api_bp.post('/auth/register')
 def register():
     b = request.get_json(force=True) or {}
     name = (b.get('name') or '').strip()
@@ -221,7 +289,7 @@ def register():
     token = make_token(uid)
     return jsonify(token=token, user=safe_user(u)), 201
 
-@app.post('/api/auth/login')
+@api_bp.post('/auth/login')
 def login():
     ip = request.remote_addr
     if is_rate_limited(ip):
@@ -237,37 +305,96 @@ def login():
     token = make_token(u['id'])
     return jsonify(token=token, user=safe_user(u))
 
-@app.get('/api/auth/me')
+@api_bp.get('/auth/me')
 def me():
     u = require_login()
     if isinstance(u, tuple): return u
     return jsonify(safe_user(u))
 
-@app.post('/api/auth/logout')
+@api_bp.post('/auth/logout')
 def logout():
     return '', 204
 
+# ── Health ──────────────────────────────────────────────────────────────────────
+@api_bp.get('/health')
+def health():
+    return jsonify({
+        "status": "ok",
+        "service": "wisata",
+        "version": "1.0.0",
+        "time": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    })
+
 # ── Wilayah & Destinasi ─────────────────────────────────────────────────────────
-@app.get('/api/regions')
+@api_bp.get('/regions')
 def regions():
     rows = db().execute('SELECT r.*, (SELECT COUNT(*) FROM destinations d WHERE d.region=r.slug) AS total FROM regions r').fetchall()
     return jsonify([dict(r) for r in rows])
 
-@app.get('/api/destinations')
+@api_bp.get('/destinations')
 def list_dest():
-    q, reg = request.args.get('q', ''), request.args.get('region')
-    sql, args = 'SELECT * FROM destinations WHERE name LIKE ?', [f'%{q}%']
-    if reg: sql += ' AND region=?'; args.append(reg)
-    return jsonify([dest(r) for r in db().execute(sql + ' ORDER BY id', args)])
+    q = request.args.get('q', '').strip()
+    reg = request.args.get('region')
+    ids_param = request.args.get('ids')
+    
+    where = ['1=1']
+    args = []
+    if q:
+        where.append('name LIKE ?')
+        args.append(f'%{q}%')
+    if reg:
+        where.append('region=?')
+        args.append(reg)
+    if ids_param is not None:
+        ids = []
+        for x in ids_param.split(','):
+            x = x.strip()
+            if x.isdigit():
+                ids.append(int(x))
+        ids = ids[:50]
+        if ids:
+            placeholders = ','.join('?' for _ in ids)
+            where.append(f'id IN ({placeholders})')
+            args.extend(ids)
+        else:
+            where.append('1=0')
+            
+    where_sql = ' AND '.join(where)
+    count_row = db().execute(f'SELECT COUNT(*) FROM destinations WHERE {where_sql}', args).fetchone()
+    total_count = count_row[0] if count_row else 0
+    
+    has_limit = 'limit' in request.args
+    has_offset = 'offset' in request.args
+    
+    sql = f'SELECT * FROM destinations WHERE {where_sql} ORDER BY id'
+    query_args = list(args)
+    if has_limit or has_offset:
+        try:
+            limit = int(request.args.get('limit', 100))
+        except (ValueError, TypeError):
+            limit = 100
+        limit = max(1, min(limit, 200))
+        try:
+            offset = int(request.args.get('offset', 0))
+        except (ValueError, TypeError):
+            offset = 0
+        offset = max(0, offset)
+        sql += ' LIMIT ? OFFSET ?'
+        query_args.extend([limit, offset])
+        
+    rows = db().execute(sql, query_args).fetchall()
+    resp = jsonify([dest(r) for r in rows])
+    resp.headers['X-Total-Count'] = str(total_count)
+    return resp
 
-@app.get('/api/destinations/<int:i>')
+@api_bp.get('/destinations/<int:i>')
 def get_dest(i):
     r = db().execute('SELECT * FROM destinations WHERE id=?', (i,)).fetchone()
     return jsonify(dest(r)) if r else err('Wisata tidak ditemukan', 404)
 
 FIELDS = ['region', 'name', 'description', 'price_label', 'price', 'price_max', 'price_weekend', 'daily_quota']
 
-@app.post('/api/destinations')
+@api_bp.post('/destinations')
 def create_dest():
     if not admin_only(): return err('Akses ditolak', 403)
     b = request.get_json(force=True)
@@ -276,7 +403,7 @@ def create_dest():
     cur = db().execute(f"INSERT INTO destinations({','.join(FIELDS)},photos) VALUES({','.join('?'*len(FIELDS))},?)", vals + [json.dumps(b.get('photos', []))])
     db().commit(); return get_dest(cur.lastrowid), 201
 
-@app.put('/api/destinations/<int:i>')
+@api_bp.put('/destinations/<int:i>')
 def update_dest(i):
     if not admin_only(): return err('Akses ditolak', 403)
     b = request.get_json(force=True); sets = [f for f in FIELDS + ['photos'] if f in b]
@@ -285,14 +412,14 @@ def update_dest(i):
     db().execute(f"UPDATE destinations SET {','.join(f+'=?' for f in sets)} WHERE id=?", vals + [i]); db().commit()
     return get_dest(i)
 
-@app.delete('/api/destinations/<int:i>')
+@api_bp.delete('/destinations/<int:i>')
 def delete_dest(i):
     if not admin_only(): return err('Akses ditolak', 403)
     if db().execute("SELECT 1 FROM bookings WHERE destination_id=? AND status='PAID'", (i,)).fetchone():
         return err('Masih ada pesanan aktif untuk wisata ini', 409)
     db().execute('DELETE FROM destinations WHERE id=?', (i,)); db().commit(); return '', 204
 
-@app.get('/api/destinations/<int:i>/calendar')
+@api_bp.get('/destinations/<int:i>/calendar')
 def calendar(i):
     expire_stale()
     r = db().execute('SELECT * FROM destinations WHERE id=?', (i,)).fetchone()
@@ -328,7 +455,7 @@ def new_code(): return 'WJ-' + ''.join(random.choices(string.ascii_uppercase + s
 def one(code):
     return db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone()
 
-@app.post('/api/bookings')
+@api_bp.post('/bookings')
 def create_booking():
     expire_stale()
     u = require_login()
@@ -354,7 +481,7 @@ def create_booking():
     b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
     return jsonify(b_resp), 201
 
-@app.get('/api/bookings')
+@api_bp.get('/bookings')
 def list_bookings():
     expire_stale()
     u = current_user()
@@ -378,7 +505,7 @@ def list_bookings():
         return jsonify([booking(r) for r in db().execute(sql + ' ORDER BY created_at DESC', args)])
     return err('Login atau isi email/kode booking', 401)
 
-@app.get('/api/bookings/<code>')
+@api_bp.get('/bookings/<code>')
 def get_booking(code):
     expire_stale()
     r = one(code); return jsonify(booking(r)) if r else err('Booking tidak ditemukan', 404)
@@ -392,7 +519,7 @@ def can_modify_booking(r):
 
 PAYMENT_METHODS = {'qris', 'va_bca', 'va_bni', 'va_mandiri', 'gopay', 'ovo', 'dana'}
 
-@app.post('/api/bookings/<code>/pay')
+@api_bp.post('/bookings/<code>/pay')
 def pay_booking(code):
     expire_stale()
     r = one(code)
@@ -444,7 +571,7 @@ def pay_booking(code):
         return jsonify(b_resp)
     return err('Booking tidak dapat dibayar', 409)
 
-@app.post('/api/bookings/<code>/cancel')
+@api_bp.post('/bookings/<code>/cancel')
 def cancel_booking(code):
     expire_stale()
     r = one(code)
@@ -455,7 +582,7 @@ def cancel_booking(code):
     db().commit()
     return jsonify(booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone()))
 
-@app.put('/api/bookings/<code>')
+@api_bp.put('/bookings/<code>')
 def update_booking(code):
     r = one(code)
     if not r: return err('Booking tidak ditemukan', 404)
@@ -510,7 +637,7 @@ def update_booking(code):
     b_resp['expires_at'] = expires_at
     return jsonify(b_resp)
 
-@app.post('/api/bookings/<code>/refund')
+@api_bp.post('/bookings/<code>/refund')
 def refund(code):
     r = one(code)
     if not r: return err('Booking tidak ditemukan', 404)
@@ -528,7 +655,7 @@ def refund(code):
     except Exception as ex: app.logger.error(f"Mailer error: {ex}")
     return jsonify(b_resp)
 
-@app.delete('/api/bookings/<code>')
+@api_bp.delete('/bookings/<code>')
 def delete_booking(code):
     if not admin_only(): return err('Akses ditolak', 403)
     db().execute('DELETE FROM bookings WHERE code=?', (code,)); db().commit(); return '', 204
@@ -542,7 +669,15 @@ def static_files(filename):
     return send_from_directory(os.path.join(PUBLIC_DIR, 'static'), filename)
 
 from flask_cors import CORS
-CORS(app)
+CORS(app, resources={r"/api/*": {
+    "origins": "*",
+    "allow_headers": ["Authorization", "Content-Type", "Idempotency-Key", "X-Admin-Token"],
+    "expose_headers": ["X-Request-Id", "X-Total-Count"],
+    "methods": ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"]
+}})
+
+app.register_blueprint(api_bp, url_prefix='/api')
+app.register_blueprint(api_bp, url_prefix='/api/v1', name='api_v1')
 
 init()
 if __name__ == '__main__':
