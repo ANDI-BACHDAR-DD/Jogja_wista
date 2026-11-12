@@ -2,7 +2,11 @@
 **Mata kuliah:** Interoperabilitas Lanjut · **Proyek:** Jogja Itinerary (agregator 3 aplikasi) · **Versi:** 1.0
 
 ## 1. Ringkasan
-Web app pemesanan tiket objek wisata di DIY dengan **5 wilayah** (Kota Yogyakarta, Sleman, Bantul, Gunungkidul, Kulon Progo) berisi **62 objek wisata** dari `Tiket_Wisata_Jogja.xlsx` (nama, deskripsi, harga, 2 foto). Aplikasi ini berdiri sendiri dan menyediakan REST API agar dapat dihubungkan ke **Jogja Itinerary** bersama aplikasi Transport (React + TanStack, Azam & Raissa) dan Hotel (Django, Ai & Putra).
+Web app pemesanan tiket objek wisata di DIY dengan **5 wilayah** (Kota Yogyakarta, Sleman, Bantul, Gunungkidul, Kulon Progo) berisi **62 objek wisata** dari `Tiket_Wisata_Jogja.xlsx` (nama, deskripsi, harga, 2 foto).
+
+Layanan ini berdiri sendiri sebagai **layanan otonom dan interoperabel**. Selain melayani wisatawan lewat web app, Wisata Jogja dapat berkomunikasi langsung antar-layanan (Service-to-Service) dengan **Hotel Service** (Node.js 22 + Express 4 + SQLite, REST `/api/v1`, Bearer auth) dan **Transport Service** (React + TanStack), serta melayani klien agregator **Jogja Itinerary** yang mengambil data dari ketiga sistem.
+
+---
 
 ## 2. Tujuan & Metrik
 | Tujuan | Metrik keberhasilan |
@@ -76,28 +80,70 @@ Responsif (mobile-first) · dark mode otomatis · waktu muat daftar < 2 detik (f
 | Data awal | `import_xlsx.py` membaca Excel → `data/destinations.json` + foto di `static/img` |
 
 ```
-[Transport: React+TanStack] ─┐
-[Hotel: Django]             ─┼─► [Jogja Itinerary] ─► REST ─► [Wisata: Flask + SQLite]
-[Browser wisatawan]         ─┘
+                  ┌──────────────────────────────┐
+                  │       Jogja Itinerary        │
+                  │ (Klien Komposit / Agregator) │
+                  └───────┬──────────────┬───────┘
+                          │              │
+          ┌───────────────┘              └────────────────┐
+          ▼                                               ▼
+┌──────────────────┐                            ┌───────────────────┐
+│  Hotel Service   │◄────── S2S Integrations ──►│   Wisata Jogja    │
+│  (Node/Express)  │◄──────── Webhooks ─────────┤  (Flask 3 + REST) │
+└─────────┬────────┘                            └─────────┬─────────┘
+          │                                               │
+          │             ┌───────────────────┐             │
+          └────────────►│ Transport Service │◄────────────┘
+                        │ (React + TanStack)│
+                        └───────────────────┘
 ```
 
 ## 7. Model Data
 - **regions**(slug PK, name, tagline)
 - **destinations**(id PK, region FK, name, description, price_label, price, price_max, price_weekend, photos JSON, daily_quota)
-- **bookings**(code PK, destination_id FK, visit_date, qty, tier, unit_price, total, name, email, phone, status `PENDING|PAID|REFUNDED|EXPIRED`, refund_amount, refund_reason, payment_method, paid_at, expires_at, pending_visit_date, pending_unit_price, due_amount, user_id, created_at, updated_at)
+- **bookings**(code PK, destination_id FK, visit_date, qty, tier, unit_price, total, name, email, phone, status `PENDING|PAID|REFUNDED|EXPIRED`, refund_amount, refund_reason, payment_method, paid_at, expires_at, pending_visit_date, pending_unit_price, due_amount, user_id, created_at, updated_at, source `web|<partner>`, external_ref, idempotency_key)
 
-## 8. Kontrak API (dasar integrasi Jogja Itinerary)
+## 8. Kontrak API v1 & Interoperabilitas
+
+Dokumentasi lengkap dan OpenAPI 3.0.3 tersedia secara interaktif di `/api/docs` dan `/api/v1/openapi.json`.
+Semua endpoint tersedia di bawah prefix `/api/v1/...` serta backward-compatible di `/api/...`.
+
+### 8.1 Endpoint Publik & Wisatawan
 | Method & Path | Fungsi | Auth |
 |---|---|---|
-| GET `/api/regions` | 5 wilayah + jumlah wisata | – |
-| GET `/api/destinations?region=sleman&q=candi` | Daftar/filter wisata | – |
-| GET `/api/destinations/{id}` | Detail wisata | – |
-| GET `/api/destinations/{id}/calendar?month=2026-11` | Harga & sisa kuota per tanggal (`price`, `price_plus`, `is_weekend`, `weekend_note`) | – |
-| POST `/api/destinations` · PUT/DELETE `/api/destinations/{id}` | CRUD wisata | Admin |
-| POST `/api/bookings` | Buat pesanan `{destination_id, visit_date, qty, tier, name, email, phone}` → status PENDING + `expires_at` | Login |
-| GET `/api/bookings?email=&code=` · GET `/api/bookings/{code}` | Lihat pesanan | – |
-| PUT `/api/bookings/{code}` | Ubah **hanya** `{visit_date}`; harga lama terkunci; `requires_payment` bila harga baru > lama | Pemilik/Admin |
-| POST `/api/bookings/{code}/pay` | Bayar simulasi `{payment_method}`; juga menyelesaikan pending price change | Pemilik |
+| GET `/api/v1/health` | Status kesehatan layanan (service, version, timestamp UTC) | – |
+| GET `/api/v1/regions` | 5 wilayah + jumlah wisata | – |
+| GET `/api/v1/destinations` | Daftar/filter wisata (opsional: `limit`, `offset`, `ids=1,2,3`, header `X-Total-Count`) | – |
+| GET `/api/v1/destinations/{id}` | Detail wisata | – |
+| GET `/api/v1/destinations/{id}/calendar` | Harga & sisa kuota per tanggal (`price`, `price_plus`, `is_weekend`, `weekend_note`) | – |
+| GET `/api/v1/destinations/{id}/availability` | Real-time availability & tarif (parameter: `date`, `qty`, `tier`) | – |
+| POST `/api/v1/bookings` | Buat pesanan wisatawan → status PENDING + `expires_at` (15 menit) | Login |
+| GET `/api/v1/bookings` | Lihat pesanan user login / admin | User / Admin |
+| GET `/api/v1/bookings/{code}` | Detail pesanan | – |
+| PUT `/api/v1/bookings/{code}` | Ubah tanggal (`visit_date`) | Pemilik/Admin |
+| POST `/api/v1/bookings/{code}/pay` | Pembayaran simulasi → status PAID | Pemilik |
+| POST `/api/v1/bookings/{code}/cancel` | Batalkan PENDING → EXPIRED | Pemilik/Admin |
+| POST `/api/v1/bookings/{code}/refund` | Refund dana (hanya status PAID) | Pemilik/Admin |
+
+### 8.2 Endpoint Partner (Service-to-Service)
+Autentikasi menggunakan header `Authorization: Bearer <PARTNER_KEY>`.
+- **Asumsi Pembayaran Partner**: Pesanan dari partner diasumsikan pembayarannya sudah ditangani oleh sistem partner, sehingga langsung diterbitkan dengan **status `PAID`** (`payment_method='partner'`).
+- **Idempotensi**: Partner menyertakan header `Idempotency-Key` untuk menjamin request ulang mengembalikan pesanan yang sama (HTTP 200) tanpa duplikasi transaksi.
+
+| Method & Path | Fungsi | Auth |
+|---|---|---|
+| POST `/api/v1/partner/bookings` | Buat pesanan tiket langsung (status langsung PAID) | Partner Key |
+| GET `/api/v1/partner/bookings/{code}` | Detail pesanan milik partner terkait (isolasi tenant) | Partner Key |
+| GET `/api/v1/partner/bookings` | Daftar pesanan partner (filter `external_ref`, paginasi) | Partner Key |
+| PUT `/api/v1/partner/bookings/{code}` | Ubah tanggal kunjungan tiket partner | Partner Key |
+| POST `/api/v1/partner/bookings/{code}/refund` | Refund tiket partner (kebijakan 100% / 50% / hangus) | Partner Key |
+
+### 8.3 Webhook Keluar & Integrasi
+- **Webhooks**: Wisata Jogja memancarkan event `booking.created`, `booking.rescheduled`, `booking.refunded` bertanda tangan HMAC-SHA256 (`X-Wisata-Signature`) ke URL yang terdaftar di `WEBHOOK_URLS`.
+- **Integrasi Hulu**: Endpoint adaptor ke Hotel (`/api/v1/integrations/hotels`), Transport (`/api/v1/integrations/transport`), dan pengecekan kesiapan (`/api/v1/integrations/status`).
+
+Format Error Standar: `{"error": "<pesan>", "code": "<KODE>"}` dengan kode seragam:
+`VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `GONE`, `UNPROCESSABLE`, `RATE_LIMITED`, `INTERNAL_ERROR`, `UPSTREAM_ERROR`, `INTEGRATION_NOT_CONFIGURED`.
 | POST `/api/bookings/{code}/cancel` | Batalkan PENDING → EXPIRED | Pemilik/Admin |
 | POST `/api/bookings/{code}/refund` | Refund `{reason}` (hanya PAID) | Pemilik/Admin |
 | DELETE `/api/bookings/{code}` | Hapus pesanan | Admin |

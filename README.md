@@ -2,6 +2,22 @@
 
 Modul pemesanan tiket objek wisata di DIY untuk proyek **Jogja Itinerary** (mata kuliah Interoperabilitas Lanjut).
 
+---
+
+## 🚀 Fitur Interoperabilitas & Service-to-Service (API v1)
+
+Wisata Jogja kini mendukung komunikasi antar-layanan secara langsung dengan **Hotel Service**, **Transport Service**, dan **Jogja Itinerary**:
+- **API Versioning**: Semua endpoint tersedia di `/api/v1/...` (dan backward-compatible di `/api/...`).
+- **Dokumentasi Interaktif**: Akses Swagger UI di [`/api/docs`](http://localhost:5000/api/docs) dan spesifikasi OpenAPI 3.0.3 di [`/api/v1/openapi.json`](http://localhost:5000/api/v1/openapi.json).
+- **Autentikasi Partner**: Integrasi B2B tanpa login user menggunakan API Key (Bearer token) via env `PARTNER_KEYS`.
+- **Cek Kuota & Availability Real-time**: `GET /api/v1/destinations/{id}/availability`.
+- **Idempotent Booking**: Header `Idempotency-Key` menjamin pembuatan pesanan partner bebas duplikasi.
+- **Webhook Keluar**: Notifikasi event `booking.created`, `booking.rescheduled`, `booking.refunded` bertanda tangan HMAC-SHA256 (`X-Wisata-Signature`).
+- **Klien Hulu (Proxy Adaptor)**: Akses ke Hotel dan Transport via `/api/v1/integrations/*` dengan in-memory cache 60 detik.
+- 📖 **Panduan Integrasi Lengkap**: Silakan baca [INTEGRATION.md](INTEGRATION.md) untuk panduan teknis, contoh cURL, dan verifikasi webhook (Node.js & Python).
+
+---
+
 ## Stack
 - **Backend**: Python 3.10+, Flask 3, SQLite (bawaan)
 - **Frontend**: HTML + CSS + JavaScript murni (SPA, satu file `static/index.html`)
@@ -174,22 +190,32 @@ Data lama tetap aman.
 
 ```bash
 source venv/bin/activate
+# Tes fungsionalitas dasar (43 tes)
 python test_api.py
+
+# Tes interoperabilitas API v1, partner auth, OpenAPI, webhooks, integrations (28 tes)
+python test_interop.py
 ```
 
-Output yang diharapkan: `Ran 43 tests in X.Xs | OK`
+Output yang diharapkan: Semua tes lulus (`OK`).
 
 ## Struktur Folder
 
 ```
 Jogja_wisata/
-├── app.py              # Backend Flask
+├── app.py              # Backend Flask (REST API v1 + legacy /api)
 ├── mailer.py           # Notifikasi email
+├── openapi_spec.py     # Definisi spesifikasi OpenAPI 3.0.3
+├── webhooks.py         # Pengiriman webhook keluar & HMAC-SHA256 signature
+├── integrations.py     # Adaptor proxy ke Hotel & Transport dengan cache 60s
 ├── import_xlsx.py      # ETL dari Excel → JSON + foto
-├── test_api.py         # Tes integrasi (43 tes)
+├── test_api.py         # Tes integrasi fungsional (43 tes)
+├── test_interop.py     # Tes interoperabilitas & service-to-service (28 tes)
 ├── requirements.txt
 ├── vercel.json         # Konfigurasi deploy Vercel
-├── README.md
+├── README.md           # Dokumentasi proyek
+├── INTEGRATION.md      # Panduan teknis integrasi antar-layanan & contoh cURL
+├── PRD.md              # Product Requirements Document
 ├── .gitignore          # Menyertakan .env
 ├── data/
 │   └── destinations.json
