@@ -376,5 +376,44 @@ class TestPhase2Partner(unittest.TestCase):
         self.assertEqual(admin_bookings[0]['status'], 'PAID')
 
 
+class TestPhase3OpenAPI(unittest.TestCase):
+    def test_01_openapi_json(self):
+        r = client.get('/api/v1/openapi.json')
+        self.assertEqual(r.status_code, 200)
+        data = r.get_json()
+        self.assertIsInstance(data, dict)
+        self.assertEqual(data.get('openapi'), '3.0.3')
+        self.assertIn('paths', data)
+        self.assertIn('components', data)
+        self.assertIn('partnerKey', data['components']['securitySchemes'])
+        self.assertIn('userToken', data['components']['securitySchemes'])
+
+        # Verify required partner and availability endpoints
+        self.assertIn('/api/v1/destinations/{id}/availability', data['paths'])
+        self.assertIn('/api/v1/partner/bookings', data['paths'])
+        self.assertIn('/api/v1/partner/bookings/{code}', data['paths'])
+        self.assertIn('/api/v1/partner/bookings/{code}/refund', data['paths'])
+
+    def test_02_spec_paths_exist_in_flask(self):
+        import re
+        spec = client.get('/api/v1/openapi.json').get_json()
+        flask_rules = set()
+        for r in app.app.url_map.iter_rules():
+            if r.rule.startswith('/api/v1'):
+                norm = re.sub(r'<([a-zA-Z0-9_]+:)?([a-zA-Z0-9_]+)>', r'{\2}', r.rule)
+                flask_rules.add(norm)
+        for path in spec['paths']:
+            self.assertIn(path, flask_rules, f"OpenAPI path {path} not found in Flask routes")
+
+    def test_03_swagger_docs_html(self):
+        r = client.get('/api/docs')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('text/html', r.headers.get('Content-Type', ''))
+        html = r.get_data(as_text=True)
+        self.assertIn('swagger-ui', html)
+        self.assertIn('swagger-ui-bundle.js', html)
+        self.assertIn('/api/v1/openapi.json', html)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

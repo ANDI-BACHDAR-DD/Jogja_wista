@@ -452,9 +452,9 @@ def list_dest():
     resp.headers['X-Total-Count'] = str(total_count)
     return resp
 
-@api_bp.get('/destinations/<int:i>')
-def get_dest(i):
-    r = db().execute('SELECT * FROM destinations WHERE id=?', (i,)).fetchone()
+@api_bp.get('/destinations/<int:id>')
+def get_dest(id):
+    r = db().execute('SELECT * FROM destinations WHERE id=?', (id,)).fetchone()
     return jsonify(dest(r)) if r else err('Wisata tidak ditemukan', 404)
 
 FIELDS = ['region', 'name', 'description', 'price_label', 'price', 'price_max', 'price_weekend', 'daily_quota']
@@ -468,26 +468,26 @@ def create_dest():
     cur = db().execute(f"INSERT INTO destinations({','.join(FIELDS)},photos) VALUES({','.join('?'*len(FIELDS))},?)", vals + [json.dumps(b.get('photos', []))])
     db().commit(); return get_dest(cur.lastrowid), 201
 
-@api_bp.put('/destinations/<int:i>')
-def update_dest(i):
+@api_bp.put('/destinations/<int:id>')
+def update_dest(id):
     if not admin_only(): return err('Akses ditolak', 403)
     b = request.get_json(force=True); sets = [f for f in FIELDS + ['photos'] if f in b]
     if not sets: return err('Tidak ada field yang diubah')
     vals = [json.dumps(b[f]) if f == 'photos' else b[f] for f in sets]
-    db().execute(f"UPDATE destinations SET {','.join(f+'=?' for f in sets)} WHERE id=?", vals + [i]); db().commit()
-    return get_dest(i)
+    db().execute(f"UPDATE destinations SET {','.join(f+'=?' for f in sets)} WHERE id=?", vals + [id]); db().commit()
+    return get_dest(id)
 
-@api_bp.delete('/destinations/<int:i>')
-def delete_dest(i):
+@api_bp.delete('/destinations/<int:id>')
+def delete_dest(id):
     if not admin_only(): return err('Akses ditolak', 403)
-    if db().execute("SELECT 1 FROM bookings WHERE destination_id=? AND status='PAID'", (i,)).fetchone():
+    if db().execute("SELECT 1 FROM bookings WHERE destination_id=? AND status='PAID'", (id,)).fetchone():
         return err('Masih ada pesanan aktif untuk wisata ini', 409)
-    db().execute('DELETE FROM destinations WHERE id=?', (i,)); db().commit(); return '', 204
+    db().execute('DELETE FROM destinations WHERE id=?', (id,)); db().commit(); return '', 204
 
-@api_bp.get('/destinations/<int:i>/calendar')
-def calendar(i):
+@api_bp.get('/destinations/<int:id>/calendar')
+def calendar(id):
     expire_stale()
-    r = db().execute('SELECT * FROM destinations WHERE id=?', (i,)).fetchone()
+    r = db().execute('SELECT * FROM destinations WHERE id=?', (id,)).fetchone()
     if not r: return err('Wisata tidak ditemukan', 404)
     try: y, m = map(int, request.args.get('month', date.today().strftime('%Y-%m')).split('-')); d0 = date(y, m, 1)
     except Exception: return err('month harus YYYY-MM')
@@ -499,15 +499,15 @@ def calendar(i):
             price_plus += WEEKEND_SURCHARGE
         out.append(dict(date=d.isoformat(), price=unit_price(r, d, 'base'), price_plus=price_plus,
                         past=d < date.today(), is_weekend=is_we,
-                        remaining=max(0, r['daily_quota'] - sold(i, d.isoformat())),
+                        remaining=max(0, r['daily_quota'] - sold(id, d.isoformat())),
                         weekend_note=weekend_note(r, d)))
         d += timedelta(days=1)
     return jsonify(out)
 
-@api_bp.get('/destinations/<int:i>/availability')
-def destination_availability(i):
+@api_bp.get('/destinations/<int:id>/availability')
+def destination_availability(id):
     expire_stale()
-    d = db().execute('SELECT * FROM destinations WHERE id=?', (i,)).fetchone()
+    d = db().execute('SELECT * FROM destinations WHERE id=?', (id,)).fetchone()
     if not d:
         return err('Wisata tidak ditemukan', 404)
     date_str = request.args.get('date', '').strip()
@@ -1002,6 +1002,71 @@ def partner_refund_booking(code):
         app.logger.error(f"Mailer error: {ex}")
         
     return jsonify(b_resp), 200
+
+# ── OpenAPI Spec & Swagger UI ──────────────────────────────────────────────────
+import openapi_spec
+
+@api_bp.get('/openapi.json')
+def openapi_json():
+    return jsonify(openapi_spec.get_openapi_spec())
+
+SWAGGER_HTML = """<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Wisata Jogja - Dokumentasi API</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    body { margin: 0; padding: 0; background: #fafafa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .fallback-banner {
+      background: #f0f4f8;
+      border-bottom: 1px solid #d0d7de;
+      padding: 10px 20px;
+      font-size: 14px;
+      color: #24292f;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .fallback-banner a {
+      color: #0969da;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .fallback-banner a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="fallback-banner">
+    <span>Wisata Jogja - Dokumentasi API (OpenAPI 3.0.3)</span>
+    <span>Cadangan spec JSON: <a href="/api/v1/openapi.json" target="_blank">/api/v1/openapi.json</a></span>
+  </div>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function() {
+      window.ui = SwaggerUIBundle({
+        url: "/api/v1/openapi.json",
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "StandaloneLayout"
+      });
+    };
+  </script>
+</body>
+</html>"""
+
+@app.get('/api/docs')
+@app.get('/docs')
+def swagger_ui():
+    return SWAGGER_HTML, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 @app.get('/')
 def index():
