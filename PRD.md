@@ -38,6 +38,7 @@ Layanan ini berdiri sendiri sebagai **layanan otonom dan interoperabel**. Selain
 | F10 | Hapus pesanan (Admin) | Hapus data booking | Could |
 | F11 | Kuota harian | Kuota default 500 tiket/wisata/hari; pesanan melebihi kuota ditolak; PENDING yang belum kedaluwarsa tetap dihitung | Should |
 | F12 | Pembayaran simulasi | Halaman `/bayar/{code}`: countdown 15 menit, pilih metode (QRIS/VA/e-wallet), instruksi per metode, tombol "Saya Sudah Bayar", batalkan PENDING | Must |
+| F13 | Rekomendasi Penginapan JogjaStay | Bagian rekomendasi penginapan di wilayah destinasi dari API JogjaStay + modal detail in-app (pencocokan regional, tanpa klaim jarak) | Should |
 
 ### Aturan Harga (dari spreadsheet)
 - Harga tunggal → dipakai langsung. Rentang (mis. Rp12.000–Rp20.000) → **tarif dasar** = nilai bawah, **paket/wahana** = nilai atas.

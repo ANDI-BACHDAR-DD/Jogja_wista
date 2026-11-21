@@ -13,6 +13,7 @@ Wisata Jogja kini mendukung komunikasi antar-layanan secara langsung dengan **Ho
 - **Cek Kuota & Availability Real-time**: `GET /api/v1/destinations/{id}/availability`.
 - **Idempotent Booking**: Header `Idempotency-Key` menjamin pembuatan pesanan partner bebas duplikasi.
 - **Webhook Keluar**: Notifikasi event `booking.created`, `booking.rescheduled`, `booking.refunded` bertanda tangan HMAC-SHA256 (`X-Wisata-Signature`).
+- **Rekomendasi Penginapan JogjaStay**: Mengambil rekomendasi hotel hulu (`GET /api/v1/destinations/{id}/hotels` dan `GET /api/v1/integrations/hotels/{hotel_id}`) dengan in-app modal detail (pencocokan wilayah, bukan jarak).
 - **Klien Hulu (Proxy Adaptor)**: Akses ke Hotel dan Transport via `/api/v1/integrations/*` dengan in-memory cache 60 detik.
 - 📖 **Panduan Integrasi Lengkap**: Silakan baca [INTEGRATION.md](INTEGRATION.md) untuk panduan teknis, contoh cURL, dan verifikasi webhook (Node.js & Python).
 
@@ -40,6 +41,7 @@ Buka browser: `http://localhost:5000`
 | Fitur | Keterangan |
 |---|---|
 | 🗺️ Jelajahi Destinasi | 62 wisata, 5 wilayah, filter & pencarian |
+| 🏨 Rekomendasi Hotel | Hotel JogjaStay per wilayah destinasi + modal detail in-app (pencocokan wilayah) |
 | 📅 Kalender Kustom | Ketersediaan, harga per tanggal (termasuk akhir pekan), kuota |
 | 🎫 Pemesanan | Stepper 3 langkah, kode booking `WJ-XXXXXXXX`, status awal PENDING |
 | 💳 Pembayaran Simulasi | Halaman `/bayar/{code}`: countdown 15 menit, metode QRIS/VA/e-wallet |

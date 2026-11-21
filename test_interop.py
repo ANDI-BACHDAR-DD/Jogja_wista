@@ -948,6 +948,16 @@ class TestPhaseHotel2Frontend(unittest.TestCase):
         self.assertIn("JogjaStay", text)
         self.assertNotIn("terdekat", text.lower())
 
+    def test_11_verify_hotel_script_exists_and_executable(self):
+        script_path = os.path.join(os.path.dirname(__file__), 'verify_hotel.sh')
+        self.assertTrue(os.path.exists(script_path), "verify_hotel.sh must exist")
+        self.assertTrue(os.access(script_path, os.X_OK), "verify_hotel.sh must be executable")
+        with open(script_path, 'r', encoding='utf-8') as f:
+            script_content = f.read()
+        self.assertIn("destinations/${DEST_ID}/hotels", script_content)
+        self.assertIn("integrations/hotels/${FIRST_HOTEL_ID}", script_content)
+        self.assertIn("999999/hotels", script_content)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

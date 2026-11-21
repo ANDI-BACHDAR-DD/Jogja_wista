@@ -352,7 +352,164 @@ Hasil pemanggilan di-cache dalam memori selama **60 detik** untuk mengurangi beb
 
 ---
 
-## 7. Daftar Environment Variables
+## 7. Wisata -> Hotel: Rekomendasi Penginapan (JogjaStay)
+
+Selain integrasi inbound (partner memesan tiket wisata), Wisata Jogja memanggil API katalog hotel **JogjaStay** secara langsung untuk menyajikan rekomendasi akomodasi penginapan di wilayah destinasi yang sedang dilihat oleh wisatawan.
+
+### 7.1 Alur & Diagram
+1. Wisatawan membuka halaman detail objek wisata (`#/wisata/{id}`).
+2. Frontend Wisata Jogja memanggil endpoint backend `GET /api/v1/destinations/{id}/hotels`.
+3. Backend Wisata membaca `region` destinasi dari database, mencocokkannya dengan parameter pencarian wilayah JogjaStay (`city=<region>&region=<region>`), memeriksa cache in-memory 60 detik, dan memanggil API JogjaStay.
+4. Backend Wisata menormalisasi struktur hotel, memastikan skema foto hanya HTTP/HTTPS, dan mengembalikan array hotel rekomendasi.
+5. Frontend Wisata menampilkan kartu rekomendasi hotel.
+6. Bila pengunjung menekan tombol **"Lihat Detail Hotel"**, frontend membuka modal in-app dan memanggil `GET /api/v1/integrations/hotels/{hotel_id}` untuk mengambil detail lengkap beserta daftar tipe kamar dari JogjaStay tanpa meninggalkan web Wisata.
+
+```
+[ Browser / Frontend Wisata ]
+       │
+       │ 1. GET /api/v1/destinations/{id}/hotels
+       ▼
+[ Backend Wisata (Flask) ]
+       │ 2. Cek region destinasi & periksa cache 60s
+       │ 3. GET /api/v1/hotels?city={hotel_region}
+       ▼
+[ JogjaStay Hotel Service (Cloudflare Worker) ]
+       │ 4. Mengembalikan JSON list hotel
+       ▼
+[ Backend Wisata (Flask) ]
+       │ 5. Normalisasi data hotel & respons JSON
+       ▼
+[ Browser / Frontend Wisata ] (Render kartu hotel di wilayah yang sama)
+       │
+       │ 6. Klik "Lihat Detail Hotel" -> GET /api/v1/integrations/hotels/{hotel_id}
+       ▼
+[ Backend Wisata (Flask) ] -> [ JogjaStay Detail ] -> Render Modal In-App
+```
+
+### 7.2 Tabel Pemetaan Wilayah (Wisata Jogja <-> JogjaStay)
+
+| Wilayah di Wisata Jogja (DB / slug) | Nilai Parameter JogjaStay (`city`) | Label Wilayah Manusiawi |
+|---|---|---|
+| `kota-yogyakarta` | `kota-yogyakarta` | Kota Yogyakarta |
+| `kabupaten-sleman` | `kabupaten-sleman` | Kabupaten Sleman |
+| `kabupaten-bantul` | `kabupaten-bantul` | Kabupaten Bantul |
+| `kabupaten-gunungkidul` | `kabupaten-gunungkidul` | Kabupaten Gunungkidul |
+| `kabupaten-kulon-progo` | `kabupaten-kulon-progo` | Kabupaten Kulon Progo |
+
+> ⚠️ **PENTING - ATURAN PENCOCOKAN WILAYAH:**
+> Pencocokan ini murni berbasis **KESAMAAN WILAYAH ADMINISTRATIF (regional matching)**, **BUKAN** klaim jarak geometrik dan **TIDAK PERNAH** mengklaim sebagai hotel "terdekat". Entitas destinasi Wisata Jogja tidak memiliki koordinat latitude/longitude, sehingga relasi sepenuhnya adalah *"Hotel di wilayah yang sama, dari JogjaStay"*.
+
+### 7.3 Kontrak Endpoint Rekomendasi Hotel
+
+#### `GET /api/v1/destinations/{id}/hotels`
+Mengambil rekomendasi hotel di wilayah destinasi wisata yang ditentukan.
+
+- **Status**: Publik (tanpa token)
+- **Path Parameter**: `id` (integer, ID destinasi wisata)
+- **Respons Sukses (HTTP 200)**:
+```json
+{
+  "destination_id": 1,
+  "region": "kabupaten-sleman",
+  "hotel_region": "kabupaten-sleman",
+  "source": "jogjastay",
+  "match": "region",
+  "count": 10,
+  "hotels": [
+    {
+      "id": "hotel-001",
+      "name": "Hyatt Regency Yogyakarta",
+      "region": "kabupaten-sleman",
+      "region_label": "Sleman",
+      "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+      "price_from": null,
+      "currency": "IDR",
+      "address": "Jl. Palagan Tentara Pelajar, Panggung Sari, Sariharjo, Ngaglik, Sleman",
+      "rating": 4.7
+    }
+  ]
+}
+```
+
+- **Daftar Respons Error**:
+  - `404 Not Found` (`code: "NOT_FOUND"`): Destinasi ID tidak ditemukan di database.
+  - `422 Unprocessable Entity` (`code: "UNPROCESSABLE"`): Wilayah destinasi tidak dikenali dalam pemetaan JogjaStay.
+  - `502 Bad Gateway` (`code: "UPSTREAM_ERROR"`): Layanan JogjaStay tidak dapat dihubungi, timeout, atau mengembalikan respons tidak valid (tanpa membocorkan URL internal).
+  - `503 Service Unavailable` (`code: "INTEGRATION_NOT_CONFIGURED"`): URL hulu `HOTEL_API_URL` tidak diisi (pada mode testing).
+
+- **Contoh cURL**:
+```bash
+curl -s "http://localhost:5000/api/v1/destinations/1/hotels" | jq .
+```
+
+---
+
+### 7.4 Kontrak Endpoint Detail Hotel
+
+#### `GET /api/v1/integrations/hotels/{hotel_id}`
+Mengambil data detail hotel lengkap beserta daftar tipe kamar untuk ditampilkan di modal.
+
+- **Status**: Publik (tanpa token)
+- **Path Parameter**: `hotel_id` (string, ID hotel dari JogjaStay)
+- **Respons Sukses (HTTP 200)**:
+```json
+{
+  "id": "hotel-001",
+  "name": "Hyatt Regency Yogyakarta",
+  "region": "kabupaten-sleman",
+  "region_label": "Sleman",
+  "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+  "price_from": 1200000,
+  "currency": "IDR",
+  "address": "Jl. Palagan Tentara Pelajar, Panggung Sari, Sariharjo, Ngaglik, Sleman",
+  "rating": 4.7,
+  "area": "Ngaglik",
+  "description": "Resor bintang 5 yang luas dengan lapangan golf 9-hole...",
+  "rooms": [
+    {
+      "roomId": "room-001-1",
+      "roomType": "Standard King Room",
+      "pricePerNight": 1200000,
+      "capacity": 2,
+      "facilities": [
+        "WiFi Gratis",
+        "AC",
+        "Sarapan",
+        "Balkon"
+      ],
+      "bedType": "1 King Bed"
+    }
+  ],
+  "source": "jogjastay"
+}
+```
+
+- **Daftar Respons Error**:
+  - `404 Not Found` (`code: "NOT_FOUND"`): Hotel ID tidak ditemukan di JogjaStay (`HOTEL_NOT_FOUND`).
+  - `502 Bad Gateway` (`code: "UPSTREAM_ERROR"`): JogjaStay mengalami gangguan koneksi atau timeout.
+  - `503 Service Unavailable` (`code: "INTEGRATION_NOT_CONFIGURED"`): Integrasi hotel belum dikonfigurasi.
+
+- **Contoh cURL**:
+```bash
+curl -s "http://localhost:5000/api/v1/integrations/hotels/hotel-001" | jq .
+```
+
+---
+
+### 7.5 Catatan Implementasi & Ketahanan Layanan
+
+1. **In-Memory Caching (60 Detik)**:
+   - Setiap pemanggilan katalog hotel ke JogjaStay di-cache selama 60 detik berbasis parameter `(path, params)`.
+   - Mengurangi latensi jaringan ke Cloudflare Worker JogjaStay dan melindungi dari pembatasan rate limit upstream.
+2. **Graceful Degradation di Frontend**:
+   - Jika JogjaStay down (HTTP 502/timeout), frontend menampilkan kotak informasi ramah: *"Layanan hotel sedang tidak dapat diakses. Coba lagi nanti."* disertai tombol *"Coba lagi"*.
+   - Halaman detail destinasi wisata tetap berfungsi 100% normal (pengunjung tetap bisa memesan tiket destinasi tanpa gangguan).
+   - Jika daftar rekomendasi kosong (`count: 0`), ditampilkan pesan *"Belum ada rekomendasi penginapan untuk wilayah ini."*.
+   - Jika katalog JogjaStay tidak menyediakan harga kamar awal (`price_from: null`), baris harga disembunyikan otomatis (tidak menampilkan harga palsu atau Rp 0).
+
+---
+
+## 8. Daftar Environment Variables
 
 Berikut konfigurasi environment yang tersedia:
 
@@ -364,9 +521,10 @@ Berikut konfigurasi environment yang tersedia:
 | `WEBHOOK_SECRET` | String | *(kosong)* | Kunci rahasia HMAC-SHA256 untuk webhook payload. |
 | `WEBHOOK_INCLUDE_PII` | String | `0` | Set ke `1` jika webhook diizinkan membawa name, email, dan phone. |
 | `PUBLIC_BASE_URL` | String | *(kosong)* | Base URL publik layanan untuk dicantumkan di server OpenAPI spec. |
-| `HOTEL_API_URL` | String | *(kosong)* | Base URL layanan Hotel. |
-| `HOTEL_API_KEY` | String | *(kosong)* | API Key untuk autentikasi ke Hotel Service. |
+| `HOTEL_API_URL` | String | `https://jogjastay-hotel-service.jogjawisata.workers.dev` | Base URL layanan Hotel JogjaStay. |
+| `HOTEL_API_KEY` | String | *(kosong)* | API Key opsional untuk autentikasi ke Hotel Service (kosong untuk katalog publik). |
 | `HOTEL_SEARCH_PATH` | String | `/api/v1/hotels` | Path pencarian di Hotel Service. |
+| `HOTEL_TIMEOUT` | Integer | `5` | Batas waktu timeout pemanggilan Hotel Service (detik). |
 | `TRANSPORT_API_URL` | String | *(kosong)* | Base URL layanan Transport. |
 | `TRANSPORT_API_KEY` | String | *(kosong)* | API Key untuk autentikasi ke Transport Service. |
 | `TRANSPORT_SEARCH_PATH`| String | `/api/v1/routes` | Path pencarian di Transport Service. |
@@ -379,7 +537,7 @@ Berikut konfigurasi environment yang tersedia:
 
 ---
 
-## 8. Catatan Deployment Serverless (Vercel)
+## 9. Catatan Deployment Serverless (Vercel)
 
 1. **Penyimpanan SQLite Sementara (`/tmp/wisata.db`)**:
    - Di Vercel serverless environment, filesystem bersifat *read-only* kecuali folder `/tmp`.
