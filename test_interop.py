@@ -919,5 +919,35 @@ class TestPhaseHotel1Backend(unittest.TestCase):
             self.assertEqual(r_404.get_json()["code"], "NOT_FOUND")
 
 
+class TestPhaseHotel2Frontend(unittest.TestCase):
+    def test_09_frontend_has_hotel_recommendation_and_jogjastay_no_terdekat(self):
+        index_path = os.path.join(os.path.dirname(__file__), 'public', 'index.html')
+        self.assertTrue(os.path.exists(index_path), "public/index.html must exist")
+
+        with open(index_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Check required texts
+        self.assertIn("Rekomendasi Penginapan", content)
+        self.assertIn("JogjaStay", content)
+        self.assertIn("Hotel di wilayah yang sama, dari JogjaStay", content)
+        self.assertIn("loadHotelRecommendations", content)
+        self.assertIn("openHotelDetailModal", content)
+        self.assertIn("hotelRecommendations", content)
+
+        # Ensure "terdekat" NEVER appears anywhere in public/index.html
+        self.assertNotIn("terdekat", content.lower(), "Frontend must never claim hotels are 'terdekat'")
+
+    def test_10_frontend_served_via_static_routes(self):
+        # Verify app serves public/index.html with the new sections
+        r = client.get('/')
+        self.assertEqual(r.status_code, 200)
+        text = r.get_data(as_text=True)
+        r.close()
+        self.assertIn("Rekomendasi Penginapan", text)
+        self.assertIn("JogjaStay", text)
+        self.assertNotIn("terdekat", text.lower())
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

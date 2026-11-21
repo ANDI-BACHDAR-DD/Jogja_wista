@@ -1907,6 +1907,279 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ═══════════════════════════════════════════════════════════
+           REKOMENDASI HOTEL (JOGJASTAY)
+        ═══════════════════════════════════════════════════════════ */
+        .hotel-section {
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .hotel-section-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .hotel-section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .hotel-section-sub {
+            font-size: 0.85rem;
+            color: var(--text-2);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .hotel-badge-source {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: var(--r-full);
+            background: var(--bg-2);
+            color: var(--clr-primary);
+        }
+
+        .hotel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 1rem;
+        }
+
+        .hotel-card {
+            background: var(--bg-card);
+            border-radius: var(--r-lg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform var(--transition), box-shadow var(--transition);
+        }
+
+        .hotel-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .hotel-img-wrap {
+            width: 100%;
+            aspect-ratio: 16/10;
+            overflow: hidden;
+            background: var(--bg-2);
+        }
+
+        .hotel-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform var(--transition);
+        }
+
+        .hotel-card:hover .hotel-img {
+            transform: scale(1.03);
+        }
+
+        .hotel-body {
+            padding: 0.875rem 1rem 1rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 0.4rem;
+        }
+
+        .hotel-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            line-height: 1.35;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .hotel-meta-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-2);
+        }
+
+        .hotel-region-tag {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.775rem;
+            color: var(--text-3);
+        }
+
+        .hotel-rating {
+            font-weight: 600;
+            color: var(--clr-gold);
+            font-size: 0.8rem;
+        }
+
+        .hotel-price {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--clr-primary);
+            margin-top: auto;
+            padding-top: 0.35rem;
+        }
+
+        .hotel-actions {
+            margin-top: 0.5rem;
+        }
+
+        .hotel-btn-detail {
+            width: 100%;
+            text-align: center;
+            font-size: 0.825rem;
+            padding: 0.5rem;
+        }
+
+        .hotel-state-box {
+            padding: 1.5rem;
+            background: var(--bg-2);
+            border-radius: var(--r-md);
+            text-align: center;
+            color: var(--text-2);
+            margin-top: 0.75rem;
+        }
+
+        .hotel-error-box {
+            border: 1px dashed var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hotel-modal-wrap {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hotel-modal-img {
+            width: 100%;
+            max-height: 220px;
+            object-fit: cover;
+            border-radius: var(--r-md);
+            margin-bottom: 1rem;
+        }
+
+        .hotel-modal-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-2);
+        }
+
+        .hotel-modal-addr {
+            font-size: 0.875rem;
+            color: var(--text-2);
+            margin-bottom: 0.75rem;
+            line-height: 1.5;
+        }
+
+        .hotel-modal-price {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--clr-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .hotel-modal-desc {
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: var(--text);
+            margin-bottom: 1.25rem;
+            white-space: pre-line;
+        }
+
+        .hotel-room-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .hotel-room-card {
+            border: 1px solid var(--border);
+            border-radius: var(--r-md);
+            padding: 0.875rem;
+            background: var(--bg);
+        }
+
+        .hotel-room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.5rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .hotel-room-type {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        .hotel-room-price {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--clr-primary);
+        }
+
+        .hotel-room-meta {
+            font-size: 0.775rem;
+            color: var(--text-3);
+            margin-bottom: 0.25rem;
+        }
+
+        .hotel-room-facilities {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-top: 0.35rem;
+        }
+
+        .hotel-pill {
+            font-size: 0.725rem;
+            padding: 2px 7px;
+            border-radius: var(--r-full);
+            background: var(--bg-2);
+            color: var(--text-2);
+        }
+
+        .hotel-modal-footer-note {
+            border-top: 1px solid var(--border);
+            padding-top: 0.75rem;
+            margin-top: 1.25rem;
+            font-size: 0.775rem;
+            color: var(--text-3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        @media (max-width: 600px) {
+            .hotel-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
@@ -2390,6 +2663,7 @@
                 const d = await api(`/destinations/${id}`);
                 _detail.dest = d; _detail.step = 1; _detail.selectedDate = null; _detail.qty = 1;
                 renderDetailPage();
+                loadHotelRecommendations(d.id, d.region);
                 // Load calendar
                 const now = new Date();
                 loadCal(now.getFullYear(), now.getMonth() + 1);
@@ -2411,6 +2685,7 @@
             <h1 class="h1 detail-title">${esc(d.name)}</h1>
             <div class="detail-price">${esc(d.price_label)}</div>
             <p class="detail-desc">${esc(d.description)}</p>
+            <div id="hotelRecommendations"></div>
           </div>
           <aside>
             <div class="booking-panel" id="bookingPanel">
@@ -2420,6 +2695,228 @@
         </div>
       </div>
     </div>`;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           REKOMENDASI HOTEL & DETAIL MODAL (JOGJASTAY)
+        ═══════════════════════════════════════════════════════════ */
+        const REGION_FULL_NAMES = {
+            'kota-yogyakarta': 'Kota Yogyakarta',
+            'kabupaten-sleman': 'Kabupaten Sleman',
+            'kabupaten-bantul': 'Kabupaten Bantul',
+            'kabupaten-gunungkidul': 'Kabupaten Gunungkidul',
+            'kabupaten-kulon-progo': 'Kabupaten Kulon Progo',
+        };
+
+        function getRegionFullName(slug) {
+            if (REGION_FULL_NAMES[slug]) return REGION_FULL_NAMES[slug];
+            const r = (_homeState.regions || []).find(x => x.slug === slug);
+            return r ? r.name : (slug || '');
+        }
+
+        function safeHotelImageUrl(url) {
+            if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
+                return url;
+            }
+            return '/static/img/1-1.jpg';
+        }
+
+        async function loadHotelRecommendations(destId, region) {
+            const container = document.getElementById('hotelRecommendations');
+            if (!container) return;
+
+            const regFullName = getRegionFullName(region);
+
+            container.innerHTML = `
+                <section class="hotel-section" aria-labelledby="hotelSectionTitle">
+                    <div class="hotel-section-header">
+                        <h2 class="hotel-section-title" id="hotelSectionTitle">Rekomendasi Penginapan di Wilayah ${esc(regFullName)}</h2>
+                        <div class="hotel-section-sub">
+                            <span>Hotel di wilayah yang sama, dari JogjaStay</span>
+                            <span class="hotel-badge-source">Data dari JogjaStay</span>
+                        </div>
+                    </div>
+                    <div class="hotel-grid">
+                        ${skeletonCard()}
+                        ${skeletonCard()}
+                        ${skeletonCard()}
+                    </div>
+                </section>
+            `;
+
+            try {
+                const res = await api(`/v1/destinations/${destId}/hotels`);
+                const hotels = res.hotels || [];
+
+                if (!hotels.length) {
+                    container.innerHTML = `
+                        <section class="hotel-section" aria-labelledby="hotelSectionTitle">
+                            <div class="hotel-section-header">
+                                <h2 class="hotel-section-title" id="hotelSectionTitle">Rekomendasi Penginapan di Wilayah ${esc(regFullName)}</h2>
+                                <div class="hotel-section-sub">
+                                    <span>Hotel di wilayah yang sama, dari JogjaStay</span>
+                                    <span class="hotel-badge-source">Data dari JogjaStay</span>
+                                </div>
+                            </div>
+                            <div class="hotel-state-box">
+                                <p>Belum ada rekomendasi penginapan untuk wilayah ini.</p>
+                            </div>
+                        </section>
+                    `;
+                    return;
+                }
+
+                const cardsHtml = hotels.map(h => {
+                    const imgUrl = safeHotelImageUrl(h.image);
+                    const hasPrice = typeof h.price_from === 'number' && h.price_from > 0;
+                    const hasRating = h.rating !== null && h.rating !== undefined && !isNaN(Number(h.rating));
+                    const ratingText = hasRating ? `⭐ ${Number(h.rating).toFixed(1)} / 5` : '';
+                    const regLabel = h.region_label || regionLabel(h.region) || '';
+
+                    return `
+                        <article class="hotel-card">
+                            <div class="hotel-img-wrap">
+                                <img class="hotel-img" src="${esc(imgUrl)}" alt="${esc(h.name)}" loading="lazy" onerror="this.src='/static/img/1-1.jpg'">
+                            </div>
+                            <div class="hotel-body">
+                                <h3 class="hotel-name">${esc(h.name)}</h3>
+                                <div class="hotel-meta-row">
+                                    <span class="hotel-region-tag">📍 ${esc(regLabel)}</span>
+                                    ${hasRating ? `<span class="hotel-rating">${esc(ratingText)}</span>` : ''}
+                                </div>
+                                ${hasPrice ? `<div class="hotel-price">Mulai ${fmt(h.price_from)} / malam</div>` : ''}
+                                <div class="hotel-actions">
+                                    <button class="btn btn-primary btn-sm hotel-btn-detail" onclick="openHotelDetailModal('${esc(h.id)}')">Lihat Detail Hotel</button>
+                                </div>
+                            </div>
+                        </article>
+                    `;
+                }).join('');
+
+                container.innerHTML = `
+                    <section class="hotel-section" aria-labelledby="hotelSectionTitle">
+                        <div class="hotel-section-header">
+                            <h2 class="hotel-section-title" id="hotelSectionTitle">Rekomendasi Penginapan di Wilayah ${esc(regFullName)}</h2>
+                            <div class="hotel-section-sub">
+                                <span>Hotel di wilayah yang sama, dari JogjaStay</span>
+                                <span class="hotel-badge-source">Data dari JogjaStay</span>
+                            </div>
+                        </div>
+                        <div class="hotel-grid">
+                            ${cardsHtml}
+                        </div>
+                    </section>
+                `;
+            } catch (err) {
+                if (err.status === 503) {
+                    container.innerHTML = `
+                        <section class="hotel-section" aria-labelledby="hotelSectionTitle">
+                            <div class="hotel-section-header">
+                                <h2 class="hotel-section-title" id="hotelSectionTitle">Rekomendasi Penginapan di Wilayah ${esc(regFullName)}</h2>
+                                <div class="hotel-section-sub">
+                                    <span>Hotel di wilayah yang sama, dari JogjaStay</span>
+                                </div>
+                            </div>
+                            <div class="hotel-state-box">
+                                <p style="color:var(--text-3)">Integrasi hotel belum dikonfigurasi.</p>
+                            </div>
+                        </section>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <section class="hotel-section" aria-labelledby="hotelSectionTitle">
+                        <div class="hotel-section-header">
+                            <h2 class="hotel-section-title" id="hotelSectionTitle">Rekomendasi Penginapan di Wilayah ${esc(regFullName)}</h2>
+                            <div class="hotel-section-sub">
+                                <span>Hotel di wilayah yang sama, dari JogjaStay</span>
+                                <span class="hotel-badge-source">Data dari JogjaStay</span>
+                            </div>
+                        </div>
+                        <div class="hotel-state-box hotel-error-box">
+                            <p>Layanan hotel sedang tidak dapat diakses. Coba lagi nanti.</p>
+                            <button class="btn btn-outline btn-sm" onclick="loadHotelRecommendations(${destId}, '${esc(region)}')">Coba lagi</button>
+                        </div>
+                    </section>
+                `;
+            }
+        }
+
+        async function openHotelDetailModal(hotelId) {
+            openModal('Detail Hotel', `
+                <div style="padding:1.5rem 0;text-align:center">
+                    <div class="skeleton sk-img" style="height:160px;border-radius:var(--r-md);margin-bottom:1rem"></div>
+                    <div class="skeleton sk-line" style="margin-bottom:0.5rem"></div>
+                    <div class="skeleton sk-line short"></div>
+                    <p style="margin-top:1rem;color:var(--text-3);font-size:0.875rem">Memuat detail hotel...</p>
+                </div>
+            `);
+
+            try {
+                const h = await api(`/v1/integrations/hotels/${encodeURIComponent(hotelId)}`);
+                const imgUrl = safeHotelImageUrl(h.image);
+                const hasPrice = typeof h.price_from === 'number' && h.price_from > 0;
+                const hasRating = h.rating !== null && h.rating !== undefined && !isNaN(Number(h.rating));
+                const ratingText = hasRating ? `⭐ ${Number(h.rating).toFixed(1)} / 5` : '';
+                const regLabel = h.region_label || regionLabel(h.region) || h.area || '';
+
+                const rooms = Array.isArray(h.rooms) ? h.rooms : [];
+                const roomsHtml = rooms.length ? `
+                    <div style="margin-top:1.25rem">
+                        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.6rem;color:var(--text)">Tipe Kamar Tersedia</h4>
+                        <div class="hotel-room-list">
+                            ${rooms.map(r => {
+                                const roomPrice = typeof r.pricePerNight === 'number' && r.pricePerNight > 0 ? `${fmt(r.pricePerNight)} / malam` : '';
+                                const facs = Array.isArray(r.facilities) ? r.facilities : [];
+                                return `
+                                    <div class="hotel-room-card">
+                                        <div class="hotel-room-header">
+                                            <span class="hotel-room-type">${esc(r.roomType || r.name || 'Kamar')}</span>
+                                            ${roomPrice ? `<span class="hotel-room-price">${esc(roomPrice)}</span>` : ''}
+                                        </div>
+                                        ${r.bedType ? `<div class="hotel-room-meta">🛏️ Kasur: ${esc(r.bedType)}</div>` : ''}
+                                        ${r.capacity ? `<div class="hotel-room-meta">👥 Kapasitas: ${esc(String(r.capacity))} orang</div>` : ''}
+                                        ${facs.length ? `
+                                            <div class="hotel-room-facilities">
+                                                ${facs.map(f => `<span class="hotel-pill">${esc(f)}</span>`).join('')}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : '';
+
+                const bodyHtml = `
+                    <div class="hotel-modal-wrap">
+                        <img class="hotel-modal-img" src="${esc(imgUrl)}" alt="${esc(h.name)}" onerror="this.src='/static/img/1-1.jpg'">
+                        <div class="hotel-modal-meta">
+                            <span class="hotel-region-tag">📍 ${esc(regLabel)}</span>
+                            ${hasRating ? `<span class="hotel-rating">${esc(ratingText)}</span>` : ''}
+                        </div>
+                        ${h.address ? `<p class="hotel-modal-addr"><strong>Alamat:</strong> ${esc(h.address)}</p>` : ''}
+                        ${hasPrice ? `<p class="hotel-modal-price"><strong>Mulai:</strong> ${fmt(h.price_from)} / malam</p>` : ''}
+                        ${h.description ? `<div class="hotel-modal-desc">${esc(h.description)}</div>` : ''}
+                        ${roomsHtml}
+                        <div class="hotel-modal-footer-note">
+                            <span>Data dari JogjaStay</span>
+                            <button class="btn btn-ghost btn-sm" onclick="closeModal()">Tutup</button>
+                        </div>
+                    </div>
+                `;
+
+                openModal(h.name, bodyHtml);
+            } catch (err) {
+                document.getElementById('modalTitle').textContent = 'Detail Hotel';
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="hotel-state-box hotel-error-box">
+                        <p>Gagal memuat detail hotel. Layanan sedang tidak dapat diakses.</p>
+                        <button class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+                    </div>
+                `;
+            }
         }
 
         function renderBookingPanel() {
