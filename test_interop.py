@@ -715,5 +715,209 @@ class TestPhase5Integrations(unittest.TestCase):
             self.assertNotIn("hotel.local", raw_text)
 
 
+class TestPhaseHotel1Backend(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ['HOTEL_API_URL'] = "https://mock-jogjastay.local"
+        os.environ['HOTEL_SEARCH_PATH'] = "/api/v1/hotels"
+        os.environ['HOTEL_TIMEOUT'] = "5"
+
+    def setUp(self):
+        import integrations
+        integrations._cache.clear()
+
+    def test_01_normalize_hotel(self):
+        import integrations
+        # 1. Normalizing handles missing fields (null)
+        raw_sparse = {"hotelId": "H99"}
+        norm_sparse = integrations.normalize_hotel(raw_sparse, base_url="https://mock.com")
+        self.assertEqual(norm_sparse["id"], "H99")
+        self.assertIsNone(norm_sparse["name"])
+        self.assertIsNone(norm_sparse["region"])
+        self.assertIsNone(norm_sparse["region_label"])
+        self.assertIsNone(norm_sparse["image"])
+        self.assertIsNone(norm_sparse["price_from"])
+        self.assertIsNone(norm_sparse["currency"])
+        self.assertIsNone(norm_sparse["address"])
+        self.assertIsNone(norm_sparse["rating"])
+
+        # 2. Relative image URL -> prepended with base_url
+        raw_rel = {"hotelId": "H01", "image": "/photos/hotel1.jpg"}
+        norm_rel = integrations.normalize_hotel(raw_rel, base_url="https://mock.com")
+        self.assertEqual(norm_rel["image"], "https://mock.com/photos/hotel1.jpg")
+
+        # 3. String price conversion (e.g. "Rp 450.000")
+        raw_price_str = {"hotelId": "H01", "price_from": "Rp 450.000"}
+        norm_price = integrations.normalize_hotel(raw_price_str)
+        self.assertEqual(norm_price["price_from"], 450000)
+        self.assertEqual(norm_price["currency"], "IDR")
+
+        # 4. Price from rooms list
+        raw_rooms = {
+            "hotelId": "H01",
+            "rooms": [
+                {"roomType": "Deluxe", "pricePerNight": 500000},
+                {"roomType": "Standard", "pricePerNight": 250000}
+            ]
+        }
+        norm_rooms = integrations.normalize_hotel(raw_rooms)
+        self.assertEqual(norm_rooms["price_from"], 250000)
+
+    def test_02_recommendations_for_5_regions(self):
+        from unittest.mock import patch
+        import integrations, sqlite3
+        
+        conn = sqlite3.connect("wisata.db")
+        c = conn.cursor()
+        region_dest_map = {}
+        for reg in ["kota-yogyakarta", "kabupaten-sleman", "kabupaten-bantul", "kabupaten-gunungkidul", "kabupaten-kulon-progo"]:
+            c.execute("SELECT id, region FROM destinations WHERE region=? LIMIT 1", (reg,))
+            row = c.fetchone()
+            if row:
+                region_dest_map[reg] = row[0]
+        conn.close()
+
+        for reg, dest_id in region_dest_map.items():
+            captured_calls = []
+            def fake_http_get(base_url, path, params=None, api_key=None, timeout=5, use_cache=True):
+                captured_calls.append((path, params))
+                return [
+                    {
+                        "hotelId": f"H_{reg}",
+                        "name": f"Hotel {reg}",
+                        "city": reg,
+                        "imageUrl": "https://img.com/h.jpg",
+                        "price_from": 350000
+                    }
+                ]
+
+            with patch('integrations.http_get', side_effect=fake_http_get):
+                r = client.get(f'/api/v1/destinations/{dest_id}/hotels')
+                self.assertEqual(r.status_code, 200)
+                data = r.get_json()
+                self.assertEqual(data["destination_id"], dest_id)
+                self.assertEqual(data["region"], reg)
+                self.assertEqual(data["hotel_region"], reg)
+                self.assertEqual(data["source"], "jogjastay")
+                self.assertEqual(data["match"], "region")
+                self.assertEqual(data["count"], 1)
+                self.assertEqual(len(data["hotels"]), 1)
+                self.assertEqual(data["hotels"][0]["id"], f"H_{reg}")
+
+                self.assertEqual(len(captured_calls), 1)
+                p_path, p_params = captured_calls[0]
+                self.assertEqual(p_params.get("city"), reg)
+
+    def test_03_destination_not_found(self):
+        r = client.get('/api/v1/destinations/999999/hotels')
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(r.get_json()["code"], "NOT_FOUND")
+
+    def test_04_unknown_region_422(self):
+        import sqlite3
+        conn = sqlite3.connect("wisata.db")
+        c = conn.cursor()
+        c.execute("INSERT INTO destinations(name, region, daily_quota, price) VALUES ('Alien Land', 'planet-mars', 100, 10000)")
+        fake_id = c.lastrowid
+        conn.commit()
+        conn.close()
+
+        try:
+            r = client.get(f'/api/v1/destinations/{fake_id}/hotels')
+            self.assertEqual(r.status_code, 422)
+            self.assertEqual(r.get_json()["code"], "UNPROCESSABLE")
+        finally:
+            conn = sqlite3.connect("wisata.db")
+            conn.execute("DELETE FROM destinations WHERE id=?", (fake_id,))
+            conn.commit()
+            conn.close()
+
+    def test_05_upstream_error_502_no_leak(self):
+        from unittest.mock import patch
+        import integrations
+
+        secret_url = "https://super-secret-hotel.internal"
+        os.environ['HOTEL_API_URL'] = secret_url
+
+        def failing_http_get(*args, **kwargs):
+            raise integrations.UpstreamError("Connection failed")
+
+        with patch('integrations.http_get', side_effect=failing_http_get):
+            r = client.get('/api/v1/destinations/1/hotels')
+            self.assertEqual(r.status_code, 502)
+            self.assertEqual(r.get_json()["code"], "UPSTREAM_ERROR")
+            raw_text = r.get_data(as_text=True)
+            self.assertNotIn("super-secret-hotel", raw_text)
+
+        os.environ['HOTEL_API_URL'] = "https://mock-jogjastay.local"
+
+    def test_06_empty_list_200_count_0(self):
+        from unittest.mock import patch
+        with patch('integrations.http_get', return_value=[]):
+            r = client.get('/api/v1/destinations/1/hotels')
+            self.assertEqual(r.status_code, 200)
+            data = r.get_json()
+            self.assertEqual(data["count"], 0)
+            self.assertEqual(data["hotels"], [])
+
+    def test_07_cache_active_on_destinations_hotels(self):
+        from unittest.mock import patch
+        import integrations, json
+        integrations._cache.clear()
+
+        class MockResp:
+            def __init__(self, data):
+                self.data = json.dumps(data).encode('utf-8')
+            def read(self):
+                return self.data
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+
+        with patch('urllib.request.urlopen', return_value=MockResp([{"hotelId": "H01", "name": "Hotel Cached", "city": "Kota Yogyakarta"}])):
+            r1 = client.get('/api/v1/destinations/1/hotels')
+            self.assertEqual(r1.status_code, 200)
+
+            with patch('urllib.request.urlopen', side_effect=Exception("Should not be called!")):
+                r2 = client.get('/api/v1/destinations/1/hotels')
+                self.assertEqual(r2.status_code, 200)
+                self.assertEqual(r1.get_json(), r2.get_json())
+
+    def test_08_hotel_detail_success_and_404(self):
+        from unittest.mock import patch
+        import integrations
+
+        sample_detail = {
+            "hotelId": "H01",
+            "name": "Hotel Malioboro Inn",
+            "address": "Jl. Malioboro 52",
+            "city": "Kota Yogyakarta",
+            "rating": 4,
+            "area": "Malioboro",
+            "description": "Hotel bagus",
+            "imageUrl": "https://img.com/h01.jpg",
+            "rooms": [
+                {"roomType": "Standard", "pricePerNight": 300000}
+            ]
+        }
+
+        with patch('integrations.get_hotel_detail', return_value=sample_detail):
+            r = client.get('/api/v1/integrations/hotels/H01')
+            self.assertEqual(r.status_code, 200)
+            data = r.get_json()
+            self.assertEqual(data["id"], "H01")
+            self.assertEqual(data["name"], "Hotel Malioboro Inn")
+            self.assertEqual(data["region"], "kota-yogyakarta")
+            self.assertEqual(data["price_from"], 300000)
+            self.assertEqual(data["description"], "Hotel bagus")
+            self.assertIn("rooms", data)
+
+        with patch('integrations.get_hotel_detail', side_effect=integrations.UpstreamNotFoundError()):
+            r_404 = client.get('/api/v1/integrations/hotels/H999')
+            self.assertEqual(r_404.status_code, 404)
+            self.assertEqual(r_404.get_json()["code"], "NOT_FOUND")
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

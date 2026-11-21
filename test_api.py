@@ -312,7 +312,7 @@ class TestBookings(unittest.TestCase):
     def test_14_change_date_admin_ok(self, mock_send):
         token = self._get_token('chg9@test.com', 'Chg Nine')
         code, *_ = self._book_paid(token, days=10)
-        new_visit = self._future_date(14)
+        new_visit = self._future_date(12)
         r = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
                        headers=ADMIN_HEADERS)
         self.assertEqual(r.status_code, 200)
@@ -465,7 +465,7 @@ class TestBookings(unittest.TestCase):
 
     # ── FASE 3: Weekend pricing + selisih ubah tanggal ────────────
 
-    def _find_weekday_and_weekend(self, days_ahead=14):
+    def _find_weekday_and_weekend(self, days_ahead=2):
         """Cari tanggal weekday dan weekend di masa depan."""
         base = datetime.date.today() + datetime.timedelta(days=days_ahead)
         # Cari Senin (weekday) terdekat

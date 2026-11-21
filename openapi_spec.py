@@ -117,6 +117,38 @@ def get_openapi_spec():
                         "email": {"type": "string", "example": "budi@example.com"},
                         "phone": {"type": "string", "example": "08123456789"}
                     }
+                },
+                "HotelRecommendation": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "example": "H01"},
+                        "name": {"type": "string", "example": "Hotel Malioboro Inn"},
+                        "region": {"type": "string", "example": "kota-yogyakarta"},
+                        "region_label": {"type": "string", "example": "Kota Yogyakarta"},
+                        "image": {"type": "string", "nullable": True, "example": "https://images.unsplash.com/photo-1549294413-26f195200c16"},
+                        "price_from": {"type": "integer", "nullable": True, "example": 300000},
+                        "currency": {"type": "string", "nullable": True, "example": "IDR"},
+                        "address": {"type": "string", "nullable": True, "example": "Jl. Malioboro No. 52, Gedongtengen, Kota Yogyakarta"},
+                        "rating": {"type": "number", "nullable": True, "example": 4}
+                    }
+                },
+                "HotelDetail": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "example": "H01"},
+                        "name": {"type": "string", "example": "Hotel Malioboro Inn"},
+                        "region": {"type": "string", "example": "kota-yogyakarta"},
+                        "region_label": {"type": "string", "example": "Kota Yogyakarta"},
+                        "image": {"type": "string", "nullable": True},
+                        "price_from": {"type": "integer", "nullable": True},
+                        "currency": {"type": "string", "nullable": True},
+                        "address": {"type": "string", "nullable": True},
+                        "rating": {"type": "number", "nullable": True},
+                        "description": {"type": "string", "nullable": True},
+                        "area": {"type": "string", "nullable": True},
+                        "rooms": {"type": "array", "items": {"type": "object"}},
+                        "source": {"type": "string", "example": "jogjastay"}
+                    }
                 }
             }
         },
@@ -324,6 +356,41 @@ def get_openapi_spec():
                         "200": {"description": "Status ketersediaan", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Availability"}}}},
                         "400": {"description": "Parameter tanggal tidak valid", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
                         "404": {"description": "Wisata tidak ditemukan", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+                    }
+                }
+            },
+            "/api/v1/destinations/{id}/hotels": {
+                "get": {
+                    "tags": ["Public", "Integrations"],
+                    "summary": "Rekomendasi hotel di wilayah destinasi wisata (JogjaStay)",
+                    "parameters": [
+                        {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                        {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 6, "maximum": 20}}
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Daftar rekomendasi hotel di wilayah destinasi",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "destination_id": {"type": "integer", "example": 1},
+                                            "region": {"type": "string", "example": "kota-yogyakarta"},
+                                            "hotel_region": {"type": "string", "example": "kota-yogyakarta"},
+                                            "source": {"type": "string", "example": "jogjastay"},
+                                            "match": {"type": "string", "example": "region"},
+                                            "count": {"type": "integer", "example": 6},
+                                            "hotels": {"type": "array", "items": {"$ref": "#/components/schemas/HotelRecommendation"}}
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "404": {"description": "Wisata tidak ditemukan", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "422": {"description": "Wilayah tidak dikenal", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "502": {"description": "Layanan hotel tidak dapat diakses", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "503": {"description": "Integrasi hotel belum dikonfigurasi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
                     }
                 }
             },
@@ -621,6 +688,21 @@ def get_openapi_spec():
                     "responses": {
                         "200": {"description": "Daftar hotel terbungkus", "content": {"application/json": {"schema": {"type": "object", "properties": {"source": {"type": "string", "example": "hotel"}, "data": {"type": "object"}}}}}},
                         "502": {"description": "Layanan hotel tidak dapat dihubungi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "503": {"description": "Integrasi hotel belum dikonfigurasi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+                    }
+                }
+            },
+            "/api/v1/integrations/hotels/{hotel_id}": {
+                "get": {
+                    "tags": ["Integrations", "Public"],
+                    "summary": "Detail penginapan dari Hotel Service (JogjaStay)",
+                    "parameters": [
+                        {"name": "hotel_id", "in": "path", "required": True, "schema": {"type": "string", "example": "H01"}}
+                    ],
+                    "responses": {
+                        "200": {"description": "Detail hotel ternormalisasi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HotelDetail"}}}},
+                        "404": {"description": "Hotel tidak ditemukan", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+                        "502": {"description": "Layanan hotel tidak dapat diakses", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
                         "503": {"description": "Integrasi hotel belum dikonfigurasi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
                     }
                 }

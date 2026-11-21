@@ -541,6 +541,72 @@ def destination_availability(id):
         "is_weekend": is_we
     })
 
+@api_bp.get('/destinations/<int:id>/hotels')
+def destination_hotels(id):
+    d = db().execute('SELECT * FROM destinations WHERE id=?', (id,)).fetchone()
+    if not d:
+        return err('Wisata tidak ditemukan', 404)
+        
+    wisata_region = d['region']
+    hotel_region = integrations.WISATA_TO_HOTEL_REGION.get(wisata_region)
+    if not hotel_region:
+        return err('Wilayah tidak dikenal', 422, 'UNPROCESSABLE')
+        
+    try:
+        limit = int(request.args.get('limit', 6))
+        if limit < 1:
+            limit = 6
+        elif limit > 20:
+            limit = 20
+    except (ValueError, TypeError):
+        limit = 6
+        
+    try:
+        url, key, path = integrations.get_hotel_config()
+        timeout = integrations.get_hotel_timeout()
+        if not url:
+            return err('Integrasi hotel belum dikonfigurasi', 503, 'INTEGRATION_NOT_CONFIGURED')
+            
+        params = {'city': hotel_region, 'region': hotel_region}
+        raw_hotels = integrations.http_get(url, path, params=params, api_key=key, timeout=timeout)
+        
+        if isinstance(raw_hotels, dict) and raw_hotels.get('error'):
+            if raw_hotels.get('code') == 'INVALID_REGION':
+                raw_hotels = []
+            else:
+                return err('Layanan hotel sedang tidak dapat diakses', 502, 'UPSTREAM_ERROR')
+                
+        if isinstance(raw_hotels, dict):
+            for k in ('data', 'hotels', 'items'):
+                if k in raw_hotels and isinstance(raw_hotels[k], list):
+                    raw_hotels = raw_hotels[k]
+                    break
+        if not isinstance(raw_hotels, list):
+            raw_hotels = []
+            
+        normalized = []
+        for h in raw_hotels:
+            if isinstance(h, dict):
+                norm = integrations.normalize_hotel(h, base_url=url)
+                if norm:
+                    normalized.append(norm)
+                    
+        hotels = normalized[:limit]
+        return jsonify({
+            "destination_id": id,
+            "region": wisata_region,
+            "hotel_region": hotel_region,
+            "source": "jogjastay",
+            "match": "region",
+            "count": len(hotels),
+            "hotels": hotels
+        }), 200
+        
+    except integrations.IntegrationNotConfiguredError:
+        return err('Integrasi hotel belum dikonfigurasi', 503, 'INTEGRATION_NOT_CONFIGURED')
+    except (integrations.UpstreamError, integrations.UpstreamNotFoundError):
+        return err('Layanan hotel sedang tidak dapat diakses', 502, 'UPSTREAM_ERROR')
+
 # ── Pemesanan ───────────────────────────────────────────────────────────────────
 def booking(row):
     b = dict(row); v = date.fromisoformat(b['visit_date']); days = (v - date.today()).days
@@ -1022,6 +1088,33 @@ def integration_hotels():
         return err('Integrasi hotel belum dikonfigurasi', 503, 'INTEGRATION_NOT_CONFIGURED')
     except integrations.UpstreamError:
         return err('Gagal menghubungi layanan hotel', 502, 'UPSTREAM_ERROR')
+
+@api_bp.get('/integrations/hotels/<hotel_id>')
+def integration_hotel_detail(hotel_id):
+    try:
+        url, key, path = integrations.get_hotel_config()
+        raw = integrations.get_hotel_detail(hotel_id)
+        if not isinstance(raw, dict):
+            return err('Hotel tidak ditemukan', 404)
+        if raw.get('error') and raw.get('code') in ('HOTEL_NOT_FOUND', 'NOT_FOUND'):
+            return err('Hotel tidak ditemukan', 404)
+            
+        norm = integrations.normalize_hotel(raw, base_url=url)
+        if not norm:
+            return err('Hotel tidak ditemukan', 404)
+            
+        norm['description'] = raw.get('description')
+        norm['area'] = raw.get('area')
+        norm['rooms'] = raw.get('rooms')
+        norm['source'] = 'jogjastay'
+        
+        return jsonify(norm), 200
+    except integrations.IntegrationNotConfiguredError:
+        return err('Integrasi hotel belum dikonfigurasi', 503, 'INTEGRATION_NOT_CONFIGURED')
+    except integrations.UpstreamNotFoundError:
+        return err('Hotel tidak ditemukan', 404)
+    except integrations.UpstreamError:
+        return err('Layanan hotel sedang tidak dapat diakses', 502, 'UPSTREAM_ERROR')
 
 @api_bp.get('/integrations/transport')
 def integration_transport():

@@ -11,10 +11,55 @@ logger = logging.getLogger('integrations')
 _cache = {}
 CACHE_TTL = 60
 
+DEFAULT_HOTEL_API_URL = 'https://jogjastay-hotel-service.jogjawisata.workers.dev'
+
+WISATA_TO_HOTEL_REGION = {
+    'kota-yogyakarta': 'kota-yogyakarta',
+    'kabupaten-sleman': 'kabupaten-sleman',
+    'sleman': 'kabupaten-sleman',
+    'kabupaten-bantul': 'kabupaten-bantul',
+    'bantul': 'kabupaten-bantul',
+    'kabupaten-gunungkidul': 'kabupaten-gunungkidul',
+    'gunungkidul': 'kabupaten-gunungkidul',
+    'kabupaten-kulon-progo': 'kabupaten-kulon-progo',
+    'kulon-progo': 'kabupaten-kulon-progo',
+}
+
+HOTEL_REGION_LABELS = {
+    'kota-yogyakarta': 'Kota Yogyakarta',
+    'kabupaten-sleman': 'Kabupaten Sleman',
+    'kabupaten-bantul': 'Kabupaten Bantul',
+    'kabupaten-gunungkidul': 'Kabupaten Gunungkidul',
+    'kabupaten-kulon-progo': 'Kabupaten Kulon Progo',
+}
+
+CITY_TO_REGION = {
+    "kota yogyakarta": ("kota-yogyakarta", "Kota Yogyakarta"),
+    "yogyakarta": ("kota-yogyakarta", "Kota Yogyakarta"),
+    "sleman": ("kabupaten-sleman", "Kabupaten Sleman"),
+    "kabupaten sleman": ("kabupaten-sleman", "Kabupaten Sleman"),
+    "kabupaten-sleman": ("kabupaten-sleman", "Kabupaten Sleman"),
+    "bantul": ("kabupaten-bantul", "Kabupaten Bantul"),
+    "kabupaten bantul": ("kabupaten-bantul", "Kabupaten Bantul"),
+    "kabupaten-bantul": ("kabupaten-bantul", "Kabupaten Bantul"),
+    "gunungkidul": ("kabupaten-gunungkidul", "Kabupaten Gunungkidul"),
+    "gunung kidul": ("kabupaten-gunungkidul", "Kabupaten Gunungkidul"),
+    "kabupaten gunungkidul": ("kabupaten-gunungkidul", "Kabupaten Gunungkidul"),
+    "kabupaten-gunungkidul": ("kabupaten-gunungkidul", "Kabupaten Gunungkidul"),
+    "kulon progo": ("kabupaten-kulon-progo", "Kabupaten Kulon Progo"),
+    "kulonprogo": ("kabupaten-kulon-progo", "Kabupaten Kulon Progo"),
+    "kabupaten kulon progo": ("kabupaten-kulon-progo", "Kabupaten Kulon Progo"),
+    "kabupaten-kulon-progo": ("kabupaten-kulon-progo", "Kabupaten Kulon Progo"),
+    "kota-yogyakarta": ("kota-yogyakarta", "Kota Yogyakarta")
+}
+
 class IntegrationNotConfiguredError(Exception):
     pass
 
 class UpstreamError(Exception):
+    pass
+
+class UpstreamNotFoundError(Exception):
     pass
 
 def _clean_cache():
@@ -60,15 +105,41 @@ def http_get(base_url, path, params=None, api_key=None, timeout=5, use_cache=Tru
             if use_cache:
                 _cache[cache_key] = (time.time(), data)
             return data
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise UpstreamNotFoundError("Data tidak ditemukan")
+        logger.warning(f"Upstream HTTP error {e.code} for path {clean_path}")
+        raise UpstreamError("Gagal menghubungi layanan hulu")
     except Exception as e:
         logger.warning(f"Upstream request failed for path {clean_path}: {type(e).__name__}")
         raise UpstreamError("Gagal menghubungi layanan hulu")
 
 def get_hotel_config():
-    url = os.getenv('HOTEL_API_URL', '').strip()
+    if 'HOTEL_API_URL' in os.environ:
+        url = os.environ.get('HOTEL_API_URL', '').strip()
+    else:
+        # Default fallback
+        is_testing = os.getenv('TESTING') == '1'
+        try:
+            from flask import current_app
+            if current_app and current_app.config.get('TESTING'):
+                is_testing = True
+        except Exception:
+            pass
+        if is_testing:
+            url = ''
+        else:
+            url = DEFAULT_HOTEL_API_URL
+
     key = os.getenv('HOTEL_API_KEY', '').strip()
     path = os.getenv('HOTEL_SEARCH_PATH', '/api/v1/hotels').strip()
     return url, key, path
+
+def get_hotel_timeout():
+    try:
+        return float(os.getenv('HOTEL_TIMEOUT', 5))
+    except Exception:
+        return 5
 
 def get_transport_config():
     url = os.getenv('TRANSPORT_API_URL', '').strip()
@@ -78,9 +149,95 @@ def get_transport_config():
 
 def get_hotels(params):
     url, key, path = get_hotel_config()
+    timeout = get_hotel_timeout()
     if not url:
         raise IntegrationNotConfiguredError("Integrasi hotel belum dikonfigurasi")
-    return http_get(url, path, params=params, api_key=key, timeout=5)
+    return http_get(url, path, params=params, api_key=key, timeout=timeout)
+
+def get_hotel_detail(hotel_id):
+    url, key, path = get_hotel_config()
+    timeout = get_hotel_timeout()
+    if not url:
+        raise IntegrationNotConfiguredError("Integrasi hotel belum dikonfigurasi")
+    detail_path = f"{path.rstrip('/')}/{hotel_id}"
+    raw = http_get(url, detail_path, api_key=key, timeout=timeout)
+    if isinstance(raw, dict) and raw.get('error') and raw.get('code') in ('HOTEL_NOT_FOUND', 'NOT_FOUND'):
+        raise UpstreamNotFoundError("Hotel tidak ditemukan")
+    return raw
+
+def normalize_hotel(raw, base_url=None):
+    if not isinstance(raw, dict):
+        return None
+    if not base_url:
+        url, _, _ = get_hotel_config()
+        base_url = url or DEFAULT_HOTEL_API_URL
+        
+    h_id = raw.get("hotelId") or raw.get("id")
+    name = raw.get("name")
+    
+    raw_city = raw.get("city") or raw.get("region") or ""
+    city_str = str(raw_city).strip()
+    
+    norm_reg, norm_lbl = CITY_TO_REGION.get(
+        city_str.lower(),
+        (raw.get("region") or (city_str if city_str else None), raw.get("region_label") or (city_str if city_str else None))
+    )
+    
+    img = raw.get("imageUrl") or raw.get("image") or raw.get("photo")
+    if img and isinstance(img, str):
+        img = img.strip()
+        if img.startswith("http://") or img.startswith("https://"):
+            image_url = img
+        elif img.startswith("/"):
+            clean_base = base_url.rstrip("/")
+            image_url = f"{clean_base}/{img.lstrip('/')}"
+        else:
+            image_url = None
+    else:
+        image_url = None
+        
+    price_val = raw.get("price_from")
+    if price_val is None:
+        price_val = raw.get("price") or raw.get("pricePerNight") or raw.get("min_price")
+    if price_val is None and "rooms" in raw and isinstance(raw["rooms"], list):
+        room_prices = [r.get("pricePerNight") for r in raw["rooms"] if isinstance(r, dict) and r.get("pricePerNight") is not None]
+        if room_prices:
+            price_val = min(room_prices)
+            
+    price_from = None
+    if price_val is not None:
+        try:
+            if isinstance(price_val, str):
+                cleaned = price_val.replace("Rp", "").replace(".", "").replace(",", "").strip()
+                price_from = int(float(cleaned))
+            else:
+                price_from = int(price_val)
+        except Exception:
+            price_from = None
+            
+    currency = raw.get("currency") or ("IDR" if price_from is not None else None)
+    address = raw.get("address")
+    
+    rating = raw.get("rating")
+    if rating is not None:
+        try:
+            rating = float(rating)
+            if rating.is_integer():
+                rating = int(rating)
+        except Exception:
+            rating = None
+            
+    return {
+        "id": h_id,
+        "name": name,
+        "region": norm_reg,
+        "region_label": norm_lbl,
+        "image": image_url,
+        "price_from": price_from,
+        "currency": currency,
+        "address": address,
+        "rating": rating
+    }
 
 def get_transport(params):
     url, key, path = get_transport_config()
@@ -113,4 +270,3 @@ def get_status():
             "reachable": ping_service(t_url) if t_url else False
         }
     }
-
