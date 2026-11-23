@@ -118,12 +118,29 @@ class TestBookings(unittest.TestCase):
     def _future_date(self, days=5):
         return (datetime.date.today() + datetime.timedelta(days=days)).isoformat()
 
-    def _create_booking(self, token, days=5, qty=1, dest_id=None, name='Book Test', email='booktest@example.com'):
+    def _weekday_date(self, days=5):
+        """Hari kerja (Senin-Jumat) pertama pada atau setelah hari ini + days.
+        Tes ubah-tanggal memakai ini agar selisih tarif akhir pekan tidak ikut campur."""
+        d = datetime.date.today() + datetime.timedelta(days=days)
+        while d.weekday() >= 5:
+            d += datetime.timedelta(days=1)
+        return d.isoformat()
+
+    def _calendar(self, dest_id, *dates):
+        """Kalender destinasi untuk semua bulan yang memuat tanggal-tanggal tersebut
+        (endpoint tanpa ?month hanya mengembalikan bulan berjalan)."""
+        out = []
+        for m in sorted({d[:7] for d in dates}):
+            out += client.get(f'/api/destinations/{dest_id}/calendar?month={m}').get_json()
+        return out
+
+    def _create_booking(self, token, days=5, qty=1, dest_id=None, name='Book Test', email='booktest@example.com', weekday=False):
         if dest_id is None:
             dests = client.get('/api/destinations').get_json()
             dest_id = dests[0]['id']
         r = client.post('/api/bookings', json={
-            'destination_id': dest_id, 'visit_date': self._future_date(days),
+            'destination_id': dest_id,
+            'visit_date': self._weekday_date(days) if weekday else self._future_date(days),
             'qty': qty, 'name': name, 'email': email
         }, headers={'Authorization': f'Bearer {token}'})
         return r
@@ -210,9 +227,9 @@ class TestBookings(unittest.TestCase):
         r = client.delete(f'/api/destinations/{cid}', headers=ADMIN_HEADERS)
         self.assertEqual(r.status_code, 204)
 
-    def _book_paid(self, token, days=10, qty=1):
+    def _book_paid(self, token, days=10, qty=1, weekday=True):
         """Helper: buat booking PENDING lalu bayar, return (code, old_visit, unit_price, total)."""
-        r = self._create_booking(token, days=days, qty=qty, name='Chg Test', email='chg@test.com')
+        r = self._create_booking(token, days=days, qty=qty, name='Chg Test', email='chg@test.com', weekday=weekday)
         assert r.status_code == 201, r.get_json()
         data = r.get_json()
         code = data['code']
@@ -225,7 +242,7 @@ class TestBookings(unittest.TestCase):
     def test_07_change_date_success(self, mock_send):
         token = self._get_token('chg1@test.com', 'Chg One')
         code, old_visit, up, total = self._book_paid(token, days=10)
-        new_visit = self._future_date(12)
+        new_visit = self._weekday_date(14)
         r = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
                        headers={'Authorization': f'Bearer {token}'})
         self.assertEqual(r.status_code, 200)
@@ -312,7 +329,7 @@ class TestBookings(unittest.TestCase):
     def test_14_change_date_admin_ok(self, mock_send):
         token = self._get_token('chg9@test.com', 'Chg Nine')
         code, *_ = self._book_paid(token, days=10)
-        new_visit = self._future_date(14)
+        new_visit = self._weekday_date(14)
         r = client.put(f'/api/bookings/{code}', json={'visit_date': new_visit},
                        headers=ADMIN_HEADERS)
         self.assertEqual(r.status_code, 200)
@@ -411,7 +428,7 @@ class TestBookings(unittest.TestCase):
         c.execute("UPDATE bookings SET status='EXPIRED', expires_at=? WHERE code=?", (past, code))
         c.commit(); c.close()
         # Kuota penuh kembali (EXPIRED tidak dihitung)
-        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        cal = self._calendar(d["id"], visit)
         day = next(x for x in cal if x['date'] == visit)
         self.assertEqual(day['remaining'], d['daily_quota'])
 
@@ -485,7 +502,7 @@ class TestBookings(unittest.TestCase):
         # Cari destinasi dengan price=0? tidak, cari yang price>0 dan price_weekend=0
         d = next(x for x in dests if x['price'] > 0 and not x['price_weekend'])
         wd, we = self._find_weekday_and_weekend()
-        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        cal = self._calendar(d["id"], wd, we)
         wd_day = next(x for x in cal if x['date'] == wd)
         we_day = next(x for x in cal if x['date'] == we)
         self.assertEqual(wd_day['price'], d['price'])
@@ -496,7 +513,7 @@ class TestBookings(unittest.TestCase):
     @patch('mailer.send_email_background')
     def test_31_gembira_loka_weekend_price(self, mock_send):
         """Gembira Loka (id 5): 60.000 hari kerja, 75.000 akhir pekan (dari spreadsheet)."""
-        cal = client.get('/api/destinations/5/calendar').get_json()
+        cal = self._calendar(5, *self._find_weekday_and_weekend())
         wd, we = self._find_weekday_and_weekend()
         wd_day = next(x for x in cal if x['date'] == wd)
         we_day = next(x for x in cal if x['date'] == we)
@@ -509,7 +526,7 @@ class TestBookings(unittest.TestCase):
         dests = client.get('/api/destinations').get_json()
         d = next(x for x in dests if x['price'] == 0 and not x['price_weekend'])
         wd, we = self._find_weekday_and_weekend()
-        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        cal = self._calendar(d["id"], wd, we)
         wd_day = next(x for x in cal if x['date'] == wd)
         we_day = next(x for x in cal if x['date'] == we)
         self.assertEqual(wd_day['price'], 0)
@@ -614,7 +631,7 @@ class TestBookings(unittest.TestCase):
         dests = client.get('/api/destinations').get_json()
         d = next(x for x in dests if x['price'] > 0 and not x['price_weekend'])
         wd, we = self._find_weekday_and_weekend()
-        cal = client.get(f'/api/destinations/{d["id"]}/calendar').get_json()
+        cal = self._calendar(d["id"], wd, we)
         wd_day = next(x for x in cal if x['date'] == wd)
         we_day = next(x for x in cal if x['date'] == we)
         self.assertIn('is_weekend', wd_day)
@@ -625,7 +642,7 @@ class TestBookings(unittest.TestCase):
         self.assertIsNone(wd_day.get('weekend_note'))
         self.assertIn('Akhir pekan', we_day.get('weekend_note', ''))
         # Untuk Gembira Loka (ada price_weekend): note = 'Tarif akhir pekan'
-        cal5 = client.get('/api/destinations/5/calendar').get_json()
+        cal5 = self._calendar(5, wd, we)
         we5 = next(x for x in cal5 if x['date'] == we)
         self.assertEqual(we5.get('weekend_note'), 'Tarif akhir pekan')
 
