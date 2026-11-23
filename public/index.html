@@ -2163,6 +2163,31 @@
             '#/admin': requireLogin(viewAdmin, 'admin'),
         };
 
+        /* Tautan masuk dari penyedia lain (JogjaTrans/JogjaStay), kontrak partner-native:
+           ?destinationId=<int>&visitDate=YYYY-MM-DD&region=<label>. Hanya mengisi usulan; tidak membuat pemesanan. */
+        let _inbound = null;
+        function localDay() {
+            const n = new Date();
+            return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+        }
+        function validInboundDate(v) {
+            if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+            const [y, m, d] = v.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+            return v >= localDay() ? v : null;
+        }
+        function readInbound() {
+            const q = new URLSearchParams(location.search);
+            if (!q.has('destinationId') && !q.has('visitDate')) return;
+            const rawId = q.get('destinationId');
+            const hashId = (location.hash.match(/^#\/wisata\/(\d+)$/) || [])[1];
+            const id = /^[1-9]\d{0,14}$/.test(rawId || '') ? rawId : (/^[1-9]\d{0,14}$/.test(hashId || '') ? hashId : null);
+            if (id) _inbound = { id: Number(id), date: validInboundDate(q.get('visitDate')) };
+            // Bersihkan query agar tanggal tidak menempel pada kunjungan berikutnya (region/parameter lain diabaikan).
+            history.replaceState(null, '', location.pathname + (id ? '#/wisata/' + id : location.hash));
+        }
+
         function requireLogin(fn, role) {
             return async function (...args) {
                 if (!_state.user) { sessionStorage.setItem('afterLogin', location.hash); location.hash = '#/masuk'; return; }
@@ -2174,6 +2199,7 @@
 
         async function route() {
             const hash = location.hash || '#/';
+            if (_inbound && !/^#\/(wisata\/\d+|masuk|daftar)$/.test(hash)) _inbound = null;
             window.scrollTo(0, 0);
             // Nav active
             document.querySelectorAll('.nav-link').forEach(a => { a.classList.toggle('active', hash === a.getAttribute('href')); });
@@ -2385,15 +2411,25 @@
         let _detail = { dest: null, cal: [], selectedDate: null, qty: 1, tier: 'base', step: 1 };
 
         async function viewDetail(id) {
+            if (_inbound && _inbound.id !== id) _inbound = null;
+            const inb = _inbound;
             app.innerHTML = `<div class="page-wrapper"><div class="section" style="padding-top:calc(var(--nav-h) + 1.5rem)">${skeletonCard()}${skeletonCard()}</div></div>`;
             try {
                 const d = await api(`/destinations/${id}`);
-                _detail.dest = d; _detail.step = 1; _detail.selectedDate = null; _detail.qty = 1;
+                _detail.dest = d; _detail.step = 1; _detail.selectedDate = null; _detail.qty = 1; _detail.cal = [];
                 renderDetailPage();
-                // Load calendar
-                const now = new Date();
-                loadCal(now.getFullYear(), now.getMonth() + 1);
-            } catch (e) { showError(); }
+                // Load calendar (bulan dari tautan bila ada tanggal usulan)
+                const start = inb && inb.date ? new Date(inb.date + 'T00:00') : new Date();
+                await loadCal(start.getFullYear(), start.getMonth() + 1);
+                if (inb && inb.date) {
+                    const day = _detail.cal.find(x => x.date === inb.date);
+                    if (day && !day.past && day.remaining !== 0) selectDate(day.date, day.price, day.price_plus || 0, !!day.is_weekend, day.weekend_note || '');
+                    else toast('Tanggal dari tautan tidak tersedia. Silakan pilih tanggal lain.', 'info');
+                }
+            } catch (e) {
+                if (inb && e.status === 404) { _inbound = null; location.hash = '#/'; toast('Destinasi tidak ditemukan', 'error'); return; }
+                showError();
+            }
         }
 
         function renderDetailPage() {
@@ -3339,6 +3375,7 @@
         /* ═══════════════════════════════════════════════════════════
            INIT
         ═══════════════════════════════════════════════════════ */
+        readInbound();
         tryRestoreSession().then(route);
     </script>
 </body>
