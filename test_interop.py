@@ -244,6 +244,13 @@ class TestPhase2Partner(unittest.TestCase):
             self.assertEqual(b['external_ref'], ext_ref)
             self.assertIn('destination_name', b)
             self.assertEqual(mock_email.call_count, 1)
+            # Penanda simulasi: PAID pada pesanan partner = dicatat lunas oleh kanal partner
+            self.assertIn('simulasi', b['payment_note'])
+
+            # Pesanan partner tidak kedaluwarsa (tidak punya jendela bayar 15 menit)
+            r_get = client.get(f"/api/v1/partner/bookings/{b['code']}", headers={'Authorization': f'Bearer {self.HOTEL_KEY}'})
+            self.assertEqual(r_get.status_code, 200)
+            self.assertEqual(r_get.get_json()['status'], 'PAID')
 
             # 2. Resend with same Idempotency-Key -> 200 same booking
             r_idem = client.post('/api/v1/partner/bookings', json=payload, headers={

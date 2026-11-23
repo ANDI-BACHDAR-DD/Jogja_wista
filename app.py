@@ -551,6 +551,8 @@ def booking(row):
         b['source'] = 'web'
     return b
 
+PARTNER_PAYMENT_NOTE = 'Dicatat lunas oleh kanal partner (simulasi); tidak ada pembayaran melalui aplikasi ini.'
+
 def partner_booking(row):
     b = dict(row)
     d = db().execute('SELECT name, region FROM destinations WHERE id=?', (b['destination_id'],)).fetchone()
@@ -573,7 +575,9 @@ def partner_booking(row):
         "email": b.get('email'),
         "phone": b.get('phone'),
         "tier": b.get('tier', 'base'),
-        "updated_at": b.get('updated_at')
+        "updated_at": b.get('updated_at'),
+        # PAID pada pesanan partner = dicatat lunas oleh kanal partner (simulasi); bukan pembayaran lewat aplikasi ini.
+        "payment_note": PARTNER_PAYMENT_NOTE if (b.get('source') or 'web') != 'web' else None
     }
 
 def refund_percent(days_left):

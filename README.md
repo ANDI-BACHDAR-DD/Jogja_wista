@@ -182,7 +182,7 @@ Data lama tetap aman.
 | Status | Arti |
 |---|---|
 | `PENDING` | Baru dibuat, menunggu pembayaran (batas waktu 15 menit) |
-| `PAID` | Lunas (via simulasi pembayaran) |
+| `PAID` | Lunas (via simulasi pembayaran). Pada pesanan **partner**: dicatat lunas oleh kanal partner (simulasi), lihat `payment_note` |
 | `REFUNDED` | Dikembalikan dana |
 | `EXPIRED` | PENDING kedaluwarsa atau dibatalkan |
 
