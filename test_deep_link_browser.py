@@ -368,6 +368,9 @@ def test_interop_trip_addons_selection_in_step3(server, page):
     page.click('#modalBody .vehicle-item-card button:has-text("Pilih")')
     page.wait_for_selector('#step3VehicleBox.selected')
     assert page.evaluate('_tripAddons.vehicle && _tripAddons.vehicle.id') == 'V10'
+    nxt = (datetime.date.today() + datetime.timedelta(days=4)).isoformat()
+    step3_link = page.locator('#step3VehicleBox a.btn-primary').get_attribute('href')
+    assert step3_link == f'{TRANS_BASE}/reservasi?startDate={d}&endDate={nxt}&vehicle=V10&withDriver=false'
     assert not page.errors
 
 
@@ -413,7 +416,10 @@ def test_interop_trip_addons_displayed_on_payment_and_success(server, page):
     # Pastikan hotel & kendaraan terpilih muncul di halaman pembayaran sebelum tombol bayar ditekan
     assert 'Grand Hotel Jogja' in page.inner_text('#payHotelSection')
     assert 'Honda BeAT Gesit' in page.inner_text('#payVehicleSection')
-    
+    nxt4 = (datetime.date.today() + datetime.timedelta(days=5)).isoformat()
+    pay_trans_link = page.locator('#payVehicleSection a.btn-primary').get_attribute('href')
+    assert pay_trans_link == f'{TRANS_BASE}/reservasi?startDate={d}&endDate={nxt4}&vehicle=V20&withDriver=false'
+
     # Pilih metode pembayaran
     page.click('.pay-method[data-id="qris"]')
     assert page.is_enabled('#btnPayNow')
@@ -427,4 +433,6 @@ def test_interop_trip_addons_displayed_on_payment_and_success(server, page):
     assert 'Pesanan Berhasil!' in text
     assert 'Grand Hotel Jogja' in text
     assert 'Honda BeAT Gesit' in text
+    success_trans_link = page.locator('.trip-addons-section a:has-text("Buka Rental di JogjaTrans")').get_attribute('href')
+    assert success_trans_link == f'{TRANS_BASE}/reservasi?startDate={d}&endDate={nxt4}&vehicle=V20&withDriver=false'
     assert not page.errors

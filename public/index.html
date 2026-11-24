@@ -2974,12 +2974,21 @@
             if (visit) q.set('visitDate', visit);
             return PARTNER_APPS.itinerary + '/?' + q;
         }
-        function transHandoffUrl(vehicleId, dateStr) {
+        function transHandoffUrl(vehicleId, dateStr, withDriver) {
             const visit = dateStr || chosenVisitDate() || (_payState && _payState.booking && _payState.booking.visit_date);
             if (!visit) return '';
-            const p = { startDate: visit, endDate: visit };
-            if (vehicleId && typeof vehicleId === 'string') p.vehicleId = vehicleId;
-            return PARTNER_APPS.trans + '/mobil?' + new URLSearchParams(p);
+            if (vehicleId && typeof vehicleId === 'string' && vehicleId.trim()) {
+                const end = addDaysISO(visit, 1);
+                const isWithDriver = withDriver === true || withDriver === 'true';
+                const p = {
+                    startDate: visit,
+                    endDate: end,
+                    vehicle: vehicleId.trim(),
+                    withDriver: isWithDriver ? 'true' : 'false'
+                };
+                return PARTNER_APPS.trans + '/reservasi?' + new URLSearchParams(p);
+            }
+            return PARTNER_APPS.trans + '/mobil?' + new URLSearchParams({ startDate: visit, endDate: visit });
         }
         function refreshHandoffLinks() {
             document.querySelectorAll('a[data-handoff-hotel]').forEach(a => {
@@ -3293,7 +3302,7 @@
             }
         }
 
-        function selectTripVehicle(id, name, price, type, seats, transmission, category, withDriver, andOpen = true) {
+        function selectTripVehicle(id, name, price, type, seats, transmission, category, withDriver, andOpen = true, dateStr = null) {
             _tripAddons.vehicle = {
                 id: String(id),
                 name: String(name),
@@ -3319,8 +3328,8 @@
                 payBox.innerHTML = renderPayVehicleCard(_payState.booking);
             }
             if (andOpen) {
-                const visit = (_detail.selectedDate && _detail.selectedDate.date) || (_payState.booking && _payState.booking.visit_date);
-                const url = transHandoffUrl(id, visit);
+                const visit = dateStr || (_detail.selectedDate && _detail.selectedDate.date) || (_payState.booking && _payState.booking.visit_date);
+                const url = transHandoffUrl(id, visit, withDriver);
                 if (url) window.open(url, '_blank', 'noopener,noreferrer');
             }
         }
@@ -3510,7 +3519,7 @@
                             <button class="btn btn-ghost btn-sm" onclick="openVehicleDetailModal('${esc(v.id)}', '${dateStr}')">Detail</button>
                             ${isSelected ?
                                 `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="removeTripVehicle()">Batal</button>` :
-                                `<button class="btn btn-primary btn-sm" onclick="selectTripVehicle('${esc(v.id)}', '${esc(v.name)}', ${price}, '${esc(v.type)}', ${seats}, '${esc(trans)}', '${esc(v.category || '')}', ${v.withDriver ? 'true' : 'false'}, true)">Pilih & Sewa ↗</button>`
+                                `<button class="btn btn-primary btn-sm" onclick="selectTripVehicle('${esc(v.id)}', '${esc(v.name)}', ${price}, '${esc(v.type)}', ${seats}, '${esc(trans)}', '${esc(v.category || '')}', ${v.withDriver ? 'true' : 'false'}, true, '${dateStr}')">Pilih & Sewa ↗</button>`
                             }
                         </div>
                     </div>
@@ -3580,7 +3589,7 @@
                             <button class="btn btn-ghost btn-sm" onclick="openVehiclePickerModal('${dateStr}')">← Kembali</button>
                             ${isSelected ?
                                 `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="removeTripVehicle()">Batal Pilih</button>` :
-                                `<button class="btn btn-primary btn-sm" onclick="selectTripVehicle('${esc(v.id)}', '${esc(v.name)}', ${price}, '${esc(v.type)}', ${seats}, '${esc(trans)}', '${esc(v.category || '')}', ${v.withDriver ? 'true' : 'false'}, true)">✓ Pilih & Sewa di JogjaTrans ↗</button>`
+                                `<button class="btn btn-primary btn-sm" onclick="selectTripVehicle('${esc(v.id)}', '${esc(v.name)}', ${price}, '${esc(v.type)}', ${seats}, '${esc(trans)}', '${esc(v.category || '')}', ${v.withDriver ? 'true' : 'false'}, true, '${dateStr}')">✓ Pilih & Sewa di JogjaTrans ↗</button>`
                             }
                         </div>
                     </div>
@@ -3629,7 +3638,7 @@
             const dateStr = _detail.selectedDate && _detail.selectedDate.date;
             if (v) {
                 const icon = v.type === 'motor' ? '🛵' : '🚗';
-                const url = transHandoffUrl(v.id, dateStr);
+                const url = transHandoffUrl(v.id, dateStr, v.withDriver);
                 return `
                     <div class="trip-addon-header">
                         <span class="trip-addon-title">${icon} ${esc(v.name)}</span>
@@ -3704,7 +3713,7 @@
             const dateStr = b.visit_date;
             if (v) {
                 const icon = v.type === 'motor' ? '🛵' : '🚗';
-                const url = transHandoffUrl(v.id, dateStr);
+                const url = transHandoffUrl(v.id, dateStr, v.withDriver);
                 return `
                     <div class="trip-addon-item selected" style="margin-bottom:0">
                         <div class="trip-addon-header">
@@ -3780,7 +3789,7 @@
                                 ⚙️ ${esc(v.transmission)} | 👥 ${v.seats} Kursi | Estimasi ${fmt(v.price)} / hari. Pembayaran diselesaikan di JogjaTrans.
                             </div>
                             <div class="trip-addon-actions" style="margin-top:0.4rem">
-                                <a class="btn btn-primary btn-sm" href="${esc(transHandoffUrl(v.id, b.visit_date))}" target="_blank" rel="noopener noreferrer">Buka Rental di JogjaTrans ↗</a>
+                                <a class="btn btn-primary btn-sm" href="${esc(transHandoffUrl(v.id, b.visit_date, v.withDriver))}" target="_blank" rel="noopener noreferrer">Buka Rental di JogjaTrans ↗</a>
                             </div>
                         </div>
                     ` : ''}
@@ -4071,7 +4080,7 @@
         </div>
 
         <!-- Kelengkapan Perjalanan Interoperabel -->
-        <div class="eticket" style="margin-top:1.25rem;background:var(--bg-card);border:1px solid var(--border)">
+        <div class="eticket trip-addons-section" style="margin-top:1.25rem;background:var(--bg-card);border:1px solid var(--border)">
           <div class="eticket-top" style="background:var(--bg-2);color:var(--text);border-bottom:1px solid var(--border);padding:0.75rem 1.25rem">
             <div style="font-size:0.85rem;font-weight:700">🧭 Kelengkapan Perjalanan Interoperabel</div>
           </div>
