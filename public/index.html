@@ -2200,6 +2200,176 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ═══════════════════════════════════════════════════════════
+           INTEROPERABILITAS: ADDON PENGINAPAN & RENTAL KENDARAAN
+        ═══════════════════════════════════════════════════════════ */
+        .trip-addons-section {
+            margin-top: 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 1rem;
+            background: var(--bg-2);
+        }
+        .trip-addon-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-md);
+            padding: 0.75rem 0.875rem;
+            margin-bottom: 0.6rem;
+            transition: border-color var(--transition);
+        }
+        .trip-addon-item.selected {
+            border-color: var(--clr-primary);
+            background: rgba(200, 98, 42, 0.04);
+        }
+        .trip-addon-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.35rem;
+        }
+        .trip-addon-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .trip-addon-badge {
+            font-size: 0.725rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: var(--r-full);
+            background: var(--bg-2);
+            color: var(--text-2);
+        }
+        .trip-addon-badge.badge-selected {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .trip-addon-desc {
+            font-size: 0.8rem;
+            color: var(--text-3);
+            line-height: 1.4;
+            margin-bottom: 0.5rem;
+        }
+        .trip-addon-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .trip-addon-price {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--clr-primary);
+            margin-right: auto;
+        }
+
+        /* Vehicle Grid & Modal Styles */
+        .vehicle-filter-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .vehicle-filter-btn {
+            padding: 0.35rem 0.85rem;
+            border-radius: var(--r-full);
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-2);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+        .vehicle-filter-btn.active {
+            background: var(--clr-primary);
+            color: #fff;
+            border-color: var(--clr-primary);
+        }
+        .vehicle-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 440px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .vehicle-item-card {
+            border: 1px solid var(--border);
+            border-radius: var(--r-md);
+            padding: 0.85rem;
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .vehicle-item-card:hover {
+            border-color: var(--clr-primary);
+            box-shadow: var(--shadow-sm);
+        }
+        .vehicle-item-card.selected {
+            border-color: var(--clr-primary);
+            background: rgba(200, 98, 42, 0.04);
+        }
+        .vehicle-item-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 0;
+        }
+        .vehicle-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--r-md);
+            background: var(--bg-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+        .vehicle-item-info {
+            min-width: 0;
+        }
+        .vehicle-item-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text);
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .vehicle-item-meta {
+            font-size: 0.775rem;
+            color: var(--text-3);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .vehicle-item-right {
+            text-align: right;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.35rem;
+        }
+        .vehicle-item-price {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--clr-primary);
+        }
     </style>
 </head>
 
@@ -3031,8 +3201,11 @@
                         ${roomsHtml}
                         <div class="hotel-modal-footer-note">
                             <span>Data dari JogjaStay</span>
-                            <a class="btn btn-primary btn-sm" data-handoff-hotel="${esc(h.id || hotelId)}" data-region="${esc(_detail.dest && _detail.dest.region || '')}" target="_blank" rel="noopener noreferrer" hidden>Pesan kamar di JogjaStay ↗</a>
-                            <button class="btn btn-ghost btn-sm" onclick="closeModal()">Tutup</button>
+                            <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap">
+                                <button class="btn btn-primary btn-sm" onclick="selectTripHotel('${esc(h.id || hotelId)}', '${esc(h.name)}', ${h.price_from || 0}, '${esc(h.region || '')}', '${esc(imgUrl)}', ${h.rating || 'null'})">✓ Pilih Penginapan Ini</button>
+                                <a class="btn btn-outline btn-sm" data-handoff-hotel="${esc(h.id || hotelId)}" data-region="${esc(_detail.dest && _detail.dest.region || '')}" target="_blank" rel="noopener noreferrer" hidden>Pesan kamar di JogjaStay ↗</a>
+                                <button class="btn btn-ghost btn-sm" onclick="closeModal()">Tutup</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -3049,6 +3222,548 @@
                 `;
             }
         }
+
+        /* ═══════════════════════════════════════════════════════════
+           INTEROPERABILITAS PERJALANAN: HOTEL & KENDARAAN (STATE & PICKER)
+        ═══════════════════════════════════════════════════════════ */
+        let _tripAddons = { hotel: null, vehicle: null };
+
+        function loadTripAddons() {
+            try {
+                const raw = sessionStorage.getItem('trip_addons_wisata');
+                if (raw) _tripAddons = JSON.parse(raw);
+            } catch (e) {
+                _tripAddons = { hotel: null, vehicle: null };
+            }
+        }
+
+        function saveTripAddons() {
+            try {
+                sessionStorage.setItem('trip_addons_wisata', JSON.stringify(_tripAddons));
+            } catch (e) { }
+        }
+
+        function selectTripHotel(id, name, price, region, image, rating) {
+            _tripAddons.hotel = {
+                id: String(id),
+                name: String(name),
+                price: Number(price) || 0,
+                region: region || '',
+                image: image || '',
+                rating: rating !== undefined && rating !== null ? Number(rating) : null
+            };
+            saveTripAddons();
+            toast(`Penginapan terpilih: ${name}`, 'success');
+            closeModal();
+            if (_detail && _detail.step === 3) {
+                const box = document.getElementById('step3HotelBox');
+                if (box) {
+                    box.classList.add('selected');
+                    box.innerHTML = renderStep3HotelContent();
+                }
+            }
+            const payBox = document.getElementById('payHotelSection');
+            if (payBox && _payState.booking) {
+                payBox.innerHTML = renderPayHotelCard(_payState.booking);
+            }
+        }
+
+        function removeTripHotel() {
+            _tripAddons.hotel = null;
+            saveTripAddons();
+            toast('Pilihan penginapan dibatalkan', 'info');
+            if (_detail && _detail.step === 3) {
+                const box = document.getElementById('step3HotelBox');
+                if (box) {
+                    box.classList.remove('selected');
+                    box.innerHTML = renderStep3HotelContent();
+                }
+            }
+            const payBox = document.getElementById('payHotelSection');
+            if (payBox && _payState.booking) {
+                payBox.innerHTML = renderPayHotelCard(_payState.booking);
+            }
+        }
+
+        function selectTripVehicle(id, name, price, type, seats, transmission, category, withDriver) {
+            _tripAddons.vehicle = {
+                id: String(id),
+                name: String(name),
+                price: Number(price) || 0,
+                type: type || 'mobil',
+                seats: Number(seats) || (type === 'motor' ? 2 : 5),
+                transmission: transmission || 'Otomatis',
+                category: category || '',
+                withDriver: !!withDriver
+            };
+            saveTripAddons();
+            toast(`Kendaraan rental terpilih: ${name}`, 'success');
+            closeModal();
+            if (_detail && _detail.step === 3) {
+                const box = document.getElementById('step3VehicleBox');
+                if (box) {
+                    box.classList.add('selected');
+                    box.innerHTML = renderStep3VehicleContent();
+                }
+            }
+            const payBox = document.getElementById('payVehicleSection');
+            if (payBox && _payState.booking) {
+                payBox.innerHTML = renderPayVehicleCard(_payState.booking);
+            }
+        }
+
+        function removeTripVehicle() {
+            _tripAddons.vehicle = null;
+            saveTripAddons();
+            toast('Pilihan kendaraan dibatalkan', 'info');
+            if (_detail && _detail.step === 3) {
+                const box = document.getElementById('step3VehicleBox');
+                if (box) {
+                    box.classList.remove('selected');
+                    box.innerHTML = renderStep3VehicleContent();
+                }
+            }
+            const payBox = document.getElementById('payVehicleSection');
+            if (payBox && _payState.booking) {
+                payBox.innerHTML = renderPayVehicleCard(_payState.booking);
+            }
+        }
+
+        async function openHotelPickerModal(destId, region) {
+            destId = destId || (_detail.dest && _detail.dest.id) || (_payState.booking && _payState.booking.destination_id);
+            region = region || (_detail.dest && _detail.dest.region) || (_payState.booking && _payState.booking.destination && _payState.booking.destination.region);
+
+            openModal('Pilih Penginapan (JogjaStay)', `
+                <div style="padding:1.5rem 0;text-align:center">
+                    <div class="skeleton sk-line" style="margin-bottom:0.75rem"></div>
+                    <div class="skeleton sk-line short" style="margin-bottom:1.5rem"></div>
+                    ${skeletonCard()}
+                    ${skeletonCard()}
+                    <p style="margin-top:1rem;color:var(--text-3);font-size:0.875rem">Memuat penginapan mitra dari JogjaStay...</p>
+                </div>
+            `);
+
+            try {
+                const res = await api(`/v1/destinations/${destId}/hotels`);
+                const hotels = res.hotels || [];
+                if (!hotels.length) {
+                    document.getElementById('modalBody').innerHTML = `
+                        <div class="empty-state" style="padding:1.5rem 0">
+                            <div style="font-size:2.5rem;margin-bottom:0.5rem">🏨</div>
+                            <h3>Belum ada penginapan tersedia</h3>
+                            <p style="color:var(--text-3);font-size:0.875rem">Tidak ada penginapan yang terdaftar dari JogjaStay untuk wilayah ini saat ini.</p>
+                            <button class="btn btn-outline btn-sm" style="margin-top:1rem" onclick="closeModal()">Tutup</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const regName = getRegionFullName(region);
+                const listHtml = hotels.map(h => {
+                    const imgUrl = safeHotelImageUrl(h.image);
+                    const hasPrice = typeof h.price_from === 'number' && h.price_from > 0;
+                    const hasRating = h.rating !== null && h.rating !== undefined && !isNaN(Number(h.rating));
+                    const ratingText = hasRating ? `⭐ ${Number(h.rating).toFixed(1)}` : '';
+                    const isSelected = _tripAddons.hotel && _tripAddons.hotel.id === h.id;
+
+                    return `
+                        <div class="vehicle-item-card ${isSelected ? 'selected' : ''}" style="margin-bottom:0.75rem">
+                            <div class="vehicle-item-left">
+                                <img src="${esc(imgUrl)}" alt="${esc(h.name)}" style="width:58px;height:58px;border-radius:var(--r-md);object-fit:cover" onerror="this.src='/static/img/1-1.jpg'">
+                                <div class="vehicle-item-info">
+                                    <div class="vehicle-item-name">${esc(h.name)}</div>
+                                    <div class="vehicle-item-meta">
+                                        <span>📍 ${esc(h.region_label || regName)}</span>
+                                        ${hasRating ? `<span class="hotel-rating">${esc(ratingText)}</span>` : ''}
+                                    </div>
+                                    ${hasPrice ? `<div class="vehicle-item-price" style="margin-top:0.25rem">Mulai ${fmt(h.price_from)} / malam</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="vehicle-item-right">
+                                <button class="btn btn-ghost btn-sm" onclick="openHotelDetailModal('${esc(h.id)}')">Detail</button>
+                                ${isSelected ?
+                                    `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="removeTripHotel()">Batal</button>` :
+                                    `<button class="btn btn-primary btn-sm" onclick="selectTripHotel('${esc(h.id)}', '${esc(h.name)}', ${h.price_from || 0}, '${esc(h.region || region)}', '${esc(imgUrl)}', ${h.rating || 'null'})">Pilih</button>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('modalBody').innerHTML = `
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+                            <span style="font-size:0.85rem;color:var(--text-2)">Wilayah <strong>${esc(regName)}</strong></span>
+                            <span class="hotel-badge-source">Data resmi JogjaStay (Tanpa Login)</span>
+                        </div>
+                        <div style="max-height:420px;overflow-y:auto;padding-right:4px">
+                            ${listHtml}
+                        </div>
+                        <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+                            <button class="btn btn-ghost btn-sm" onclick="closeModal()">Tutup</button>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="hotel-state-box hotel-error-box">
+                        <p>Layanan JogjaStay sedang tidak dapat diakses.</p>
+                        <button class="btn btn-outline btn-sm" onclick="openHotelPickerModal('${destId}', '${region}')">Coba Lagi</button>
+                    </div>
+                `;
+            }
+        }
+
+        let _vehicleCache = [];
+        let _vehicleFilter = 'all';
+
+        async function openVehiclePickerModal(dateStr) {
+            dateStr = dateStr || (_detail.selectedDate && _detail.selectedDate.date) || (_payState.booking && _payState.booking.visit_date);
+            if (!dateStr) {
+                toast('Pilih tanggal kunjungan terlebih dahulu', 'error');
+                return;
+            }
+
+            openModal('Pilih Rental Kendaraan (JogjaTrans)', `
+                <div style="padding:1.5rem 0;text-align:center">
+                    <div class="skeleton sk-line" style="margin-bottom:0.75rem"></div>
+                    <div class="skeleton sk-line short" style="margin-bottom:1.5rem"></div>
+                    ${skeletonCard()}
+                    ${skeletonCard()}
+                    <p style="margin-top:1rem;color:var(--text-3);font-size:0.875rem">Memuat armada rental dari JogjaTrans...</p>
+                </div>
+            `);
+
+            try {
+                const res = await api(`/v1/integrations/transport?startDate=${dateStr}&endDate=${dateStr}`);
+                const vehicles = (res.data && res.data.vehicles) || res.vehicles || [];
+                _vehicleCache = vehicles;
+                _vehicleFilter = 'all';
+
+                if (!vehicles.length) {
+                    document.getElementById('modalBody').innerHTML = `
+                        <div class="empty-state" style="padding:1.5rem 0">
+                            <div style="font-size:2.5rem;margin-bottom:0.5rem">🚗</div>
+                            <h3>Armada tidak tersedia</h3>
+                            <p style="color:var(--text-3);font-size:0.875rem">Tidak ada unit kendaraan yang tersedia untuk tanggal ${fmtDate(dateStr)}.</p>
+                            <button class="btn btn-outline btn-sm" style="margin-top:1rem" onclick="closeModal()">Tutup</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                renderVehiclePickerBody(dateStr);
+            } catch (e) {
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="hotel-state-box hotel-error-box">
+                        <p>Layanan rental JogjaTrans sedang tidak dapat diakses.</p>
+                        <button class="btn btn-outline btn-sm" onclick="openVehiclePickerModal('${dateStr}')">Coba Lagi</button>
+                    </div>
+                `;
+            }
+        }
+
+        function filterVehicles(type, dateStr) {
+            _vehicleFilter = type;
+            renderVehiclePickerBody(dateStr);
+        }
+
+        function renderVehiclePickerBody(dateStr) {
+            const list = _vehicleFilter === 'all' ? _vehicleCache : _vehicleCache.filter(v => v.type === _vehicleFilter);
+            const dateFormatted = fmtDate(dateStr);
+
+            const cardsHtml = list.length ? list.map(v => {
+                const isSelected = _tripAddons.vehicle && _tripAddons.vehicle.id === v.id;
+                const icon = v.type === 'motor' ? '🛵' : '🚗';
+                const price = v.dailyPrice || v.price || 0;
+                const seats = v.seats || (v.type === 'motor' ? 2 : 5);
+                const trans = v.transmission || (v.category === 'matic' ? 'Otomatis' : 'Manual');
+
+                return `
+                    <div class="vehicle-item-card ${isSelected ? 'selected' : ''}" style="margin-bottom:0.75rem">
+                        <div class="vehicle-item-left">
+                            <div class="vehicle-icon-wrap">${icon}</div>
+                            <div class="vehicle-item-info">
+                                <div class="vehicle-item-name">${esc(v.name)}</div>
+                                <div class="vehicle-item-meta">
+                                    <span>⚙️ ${esc(trans)}</span>
+                                    <span>👥 ${seats} Kursi</span>
+                                    ${v.unitsAvailable ? `<span>📦 Sisa ${v.unitsAvailable} unit</span>` : ''}
+                                </div>
+                                <div class="vehicle-item-price" style="margin-top:0.25rem">${fmt(price)} / hari</div>
+                            </div>
+                        </div>
+                        <div class="vehicle-item-right">
+                            <button class="btn btn-ghost btn-sm" onclick="openVehicleDetailModal('${esc(v.id)}', '${dateStr}')">Detail</button>
+                            ${isSelected ?
+                                `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="removeTripVehicle()">Batal</button>` :
+                                `<button class="btn btn-primary btn-sm" onclick="selectTripVehicle('${esc(v.id)}', '${esc(v.name)}', ${price}, '${esc(v.type)}', ${seats}, '${esc(trans)}', '${esc(v.category || '')}', ${v.withDriver ? 'true' : 'false'})">Pilih</button>`
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('') : `<div style="text-align:center;padding:1.5rem;color:var(--text-3)">Tidak ada tipe kendaraan ini untuk filter terpilih.</div>`;
+
+            document.getElementById('modalBody').innerHTML = `
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+                        <span style="font-size:0.85rem;color:var(--text-2)">Tanggal sewa: <strong>${dateFormatted}</strong></span>
+                        <span class="hotel-badge-source">Data resmi JogjaTrans (Tanpa Login)</span>
+                    </div>
+                    <div class="vehicle-filter-bar">
+                        <button class="vehicle-filter-btn ${_vehicleFilter === 'all' ? 'active' : ''}" onclick="filterVehicles('all', '${dateStr}')">Semua (${_vehicleCache.length})</button>
+                        <button class="vehicle-filter-btn ${_vehicleFilter === 'mobil' ? 'active' : ''}" onclick="filterVehicles('mobil', '${dateStr}')">Mobil (${_vehicleCache.filter(v => v.type === 'mobil').length})</button>
+                        <button class="vehicle-filter-btn ${_vehicleFilter === 'motor' ? 'active' : ''}" onclick="filterVehicles('motor', '${dateStr}')">Motor (${_vehicleCache.filter(v => v.type === 'motor').length})</button>
+                    </div>
+                    <div style="max-height:380px;overflow-y:auto;padding-right:4px">
+                        ${cardsHtml}
+                    </div>
+                    <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+                        <button class="btn btn-ghost btn-sm" onclick="closeModal()">Tutup</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openVehicleDetailModal(vehicleId, dateStr) {
+            const v = _vehicleCache.find(x => x.id === vehicleId);
+            if (!v) { toast('Data kendaraan tidak ditemukan', 'error'); return; }
+
+            const isSelected = _tripAddons.vehicle && _tripAddons.vehicle.id === v.id;
+            const icon = v.type === 'motor' ? '🛵' : '🚗';
+            const price = v.dailyPrice || v.price || 0;
+            const seats = v.seats || (v.type === 'motor' ? 2 : 5);
+            const trans = v.transmission || (v.category === 'matic' ? 'Otomatis' : 'Manual');
+
+            openModal(`Detail ${v.name}`, `
+                <div class="hotel-modal-wrap">
+                    <div style="display:flex;align-items:center;gap:1rem;background:var(--bg-2);padding:1rem;border-radius:var(--r-md);margin-bottom:1rem">
+                        <div style="font-size:2.5rem">${icon}</div>
+                        <div>
+                            <h3 style="font-size:1.1rem;font-weight:700;margin:0;color:var(--text)">${esc(v.name)}</h3>
+                            <div style="display:flex;gap:0.5rem;margin-top:0.25rem">
+                                <span class="hotel-pill">${esc(v.type === 'motor' ? 'Sepeda Motor' : 'Mobil')}</span>
+                                <span class="hotel-pill">${esc(v.category || 'Standar')}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hotel-modal-meta">
+                        <span>⚙️ <strong>Transmisi:</strong> ${esc(trans)}</span>
+                        <span>👥 <strong>Kapasitas:</strong> ${seats} Penumpang</span>
+                        ${v.unitsAvailable ? `<span>📦 <strong>Tersedia:</strong> ${v.unitsAvailable} unit</span>` : ''}
+                    </div>
+                    <p class="hotel-modal-price" style="font-size:1.1rem">
+                        ${fmt(price)} <span style="font-size:0.85rem;color:var(--text-3);font-weight:400">/ hari</span>
+                    </p>
+                    ${v.description ? `<div class="hotel-modal-desc">${esc(v.description)}</div>` : ''}
+                    ${v.driverAvailable ? `
+                        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-md);padding:0.75rem;margin-bottom:1rem;font-size:0.85rem">
+                            👤 <strong>Opsi Pengemudi:</strong> Tersedia dengan tambahan ${fmt(v.driverDailyPrice || 0)}/hari.
+                        </div>
+                    ` : ''}
+                    <div class="hotel-modal-footer-note">
+                        <span>Data resmi dari JogjaTrans</span>
+                        <div style="display:flex;gap:0.5rem">
+                            <button class="btn btn-ghost btn-sm" onclick="openVehiclePickerModal('${dateStr}')">← Kembali</button>
+                            ${isSelected ?
+                                `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="removeTripVehicle()">Batal Pilih</button>` :
+                                `<button class="btn btn-primary btn-sm" onclick="selectTripVehicle('${esc(v.id)}', '${esc(v.name)}', ${price}, '${esc(v.type)}', ${seats}, '${esc(trans)}', '${esc(v.category || '')}', ${v.withDriver ? 'true' : 'false'})">✓ Pilih Kendaraan Ini</button>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+
+        function renderStep3HotelContent() {
+            const h = _tripAddons.hotel;
+            const dest = _detail.dest;
+            if (h) {
+                return `
+                    <div class="trip-addon-header">
+                        <span class="trip-addon-title">🏨 ${esc(h.name)}</span>
+                        <span class="trip-addon-badge badge-selected">✓ Terpilih</span>
+                    </div>
+                    <div class="trip-addon-desc">
+                        📍 ${esc(h.region || '')} | Mulai <strong>${fmt(h.price)}</strong> / malam
+                    </div>
+                    <div class="trip-addon-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="openHotelDetailModal('${esc(h.id)}')">Detail</button>
+                        <button class="btn btn-outline btn-sm" onclick="openHotelPickerModal()">Ganti</button>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeTripHotel()">Hapus</button>
+                    </div>
+                `;
+            }
+            return `
+                <div class="trip-addon-header">
+                    <span class="trip-addon-title">🏨 Penginapan di Wilayah Ini</span>
+                    <span class="trip-addon-badge">JogjaStay</span>
+                </div>
+                <div class="trip-addon-desc">
+                    Cari & pilih penginapan di wilayah ${esc(dest ? getRegionFullName(dest.region) : '')} tanpa keluar aplikasi.
+                </div>
+                <div class="trip-addon-actions">
+                    <button class="btn btn-outline btn-sm" onclick="openHotelPickerModal()">+ Pilih Penginapan</button>
+                </div>
+            `;
+        }
+
+        function renderStep3VehicleContent() {
+            const v = _tripAddons.vehicle;
+            const dateStr = _detail.selectedDate && _detail.selectedDate.date;
+            if (v) {
+                const icon = v.type === 'motor' ? '🛵' : '🚗';
+                return `
+                    <div class="trip-addon-header">
+                        <span class="trip-addon-title">${icon} ${esc(v.name)}</span>
+                        <span class="trip-addon-badge badge-selected">✓ Terpilih</span>
+                    </div>
+                    <div class="trip-addon-desc">
+                        ⚙️ ${esc(v.transmission)} | 👥 ${v.seats} Kursi | <strong>${fmt(v.price)}</strong> / hari
+                    </div>
+                    <div class="trip-addon-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="openVehicleDetailModal('${esc(v.id)}', '${dateStr}')">Detail</button>
+                        <button class="btn btn-outline btn-sm" onclick="openVehiclePickerModal('${dateStr}')">Ganti</button>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeTripVehicle()">Hapus</button>
+                    </div>
+                `;
+            }
+            return `
+                <div class="trip-addon-header">
+                    <span class="trip-addon-title">🚗 Rental Kendaraan</span>
+                    <span class="trip-addon-badge">JogjaTrans</span>
+                </div>
+                <div class="trip-addon-desc">
+                    Sewa mobil atau motor untuk tanggal ${dateStr ? fmtDate(dateStr) : 'kunjungan'} dari mitra resmi JogjaTrans.
+                </div>
+                <div class="trip-addon-actions">
+                    <button class="btn btn-outline btn-sm" onclick="openVehiclePickerModal('${dateStr}')">+ Pilih Kendaraan</button>
+                </div>
+            `;
+        }
+
+        function renderPayHotelCard(b) {
+            const h = _tripAddons.hotel;
+            const destId = b.destination_id;
+            const reg = b.destination && b.destination.region;
+            if (h) {
+                return `
+                    <div class="trip-addon-item selected" style="margin-bottom:0">
+                        <div class="trip-addon-header">
+                            <span class="trip-addon-title">🏨 ${esc(h.name)}</span>
+                            <span class="trip-addon-badge badge-selected">✓ Terpilih di JogjaStay</span>
+                        </div>
+                        <div class="trip-addon-desc">
+                            📍 ${esc(h.region || '')} | Mulai <strong>${fmt(h.price)}</strong> / malam
+                        </div>
+                        <div class="trip-addon-actions">
+                            <button class="btn btn-ghost btn-sm" onclick="openHotelDetailModal('${esc(h.id)}')">Detail</button>
+                            <button class="btn btn-outline btn-sm" onclick="openHotelPickerModal(${destId}, '${esc(reg)}')">Ganti</button>
+                            <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeTripHotel()">Hapus</button>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div class="trip-addon-item" style="margin-bottom:0">
+                    <div class="trip-addon-header">
+                        <span class="trip-addon-title">🏨 Penginapan di Wilayah Wisata</span>
+                        <span class="trip-addon-badge">JogjaStay</span>
+                    </div>
+                    <div class="trip-addon-desc">Belum memilih penginapan untuk perjalanan ini.</div>
+                    <div class="trip-addon-actions">
+                        <button class="btn btn-outline btn-sm" onclick="openHotelPickerModal(${destId}, '${esc(reg)}')">+ Pilih Penginapan (JogjaStay)</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPayVehicleCard(b) {
+            const v = _tripAddons.vehicle;
+            const dateStr = b.visit_date;
+            if (v) {
+                const icon = v.type === 'motor' ? '🛵' : '🚗';
+                return `
+                    <div class="trip-addon-item selected" style="margin-bottom:0">
+                        <div class="trip-addon-header">
+                            <span class="trip-addon-title">${icon} ${esc(v.name)}</span>
+                            <span class="trip-addon-badge badge-selected">✓ Terpilih di JogjaTrans</span>
+                        </div>
+                        <div class="trip-addon-desc">
+                            ⚙️ ${esc(v.transmission)} | 👥 ${v.seats} Kursi | <strong>${fmt(v.price)}</strong> / hari
+                        </div>
+                        <div class="trip-addon-actions">
+                            <button class="btn btn-ghost btn-sm" onclick="openVehicleDetailModal('${esc(v.id)}', '${dateStr}')">Detail</button>
+                            <button class="btn btn-outline btn-sm" onclick="openVehiclePickerModal('${dateStr}')">Ganti</button>
+                            <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="removeTripVehicle()">Hapus</button>
+                        </div>
+                    </div>
+                `;
+            }
+            return `
+                <div class="trip-addon-item" style="margin-bottom:0">
+                    <div class="trip-addon-header">
+                        <span class="trip-addon-title">🚗 Rental Kendaraan</span>
+                        <span class="trip-addon-badge">JogjaTrans</span>
+                    </div>
+                    <div class="trip-addon-desc">Belum memilih armada kendaraan untuk tanggal ${fmtDate(dateStr)}.</div>
+                    <div class="trip-addon-actions">
+                        <button class="btn btn-outline btn-sm" onclick="openVehiclePickerModal('${dateStr}')">+ Pilih Kendaraan (JogjaTrans)</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSuccessTripAddons(b) {
+            const h = _tripAddons.hotel;
+            const v = _tripAddons.vehicle;
+            if (!h && !v) {
+                return `
+                    <p style="font-size:0.85rem;color:var(--text-3);margin-bottom:0.75rem">
+                        Ingin menambah penginapan atau kendaraan untuk kunjungan ini?
+                    </p>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                        <a class="btn btn-outline btn-sm" href="${esc(hotelHandoffUrl('', b.destination?.region))}" target="_blank" rel="noopener noreferrer">Cari Penginapan di JogjaStay ↗</a>
+                        <a class="btn btn-outline btn-sm" href="${esc(transHandoffUrl())}" target="_blank" rel="noopener noreferrer">Cari Kendaraan di JogjaTrans ↗</a>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex;flex-direction:column;gap:0.75rem">
+                    ${h ? `
+                        <div class="trip-addon-item selected" style="margin:0">
+                            <div class="trip-addon-header">
+                                <span class="trip-addon-title">🏨 ${esc(h.name)}</span>
+                                <span class="trip-addon-badge badge-selected">Rencana Penginapan</span>
+                            </div>
+                            <div class="trip-addon-desc">
+                                📍 ${esc(h.region || '')} | Estimasi ${fmt(h.price)} / malam. Tunjukkan kode pesanan atau nama Anda saat check-in di JogjaStay.
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${v ? `
+                        <div class="trip-addon-item selected" style="margin:0">
+                            <div class="trip-addon-header">
+                                <span class="trip-addon-title">${v.type === 'motor' ? '🛵' : '🚗'} ${esc(v.name)}</span>
+                                <span class="trip-addon-badge badge-selected">Rencana Rental</span>
+                            </div>
+                            <div class="trip-addon-desc">
+                                ⚙️ ${esc(v.transmission)} | 👥 ${v.seats} Kursi | Estimasi ${fmt(v.price)} / hari. Armada siap dikoordinasikan via JogjaTrans.
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        window.openHotelPickerModal = openHotelPickerModal;
+        window.openVehiclePickerModal = openVehiclePickerModal;
+        window.selectTripHotel = selectTripHotel;
+        window.removeTripHotel = removeTripHotel;
+        window.selectTripVehicle = selectTripVehicle;
+        window.removeTripVehicle = removeTripVehicle;
+        window.openVehicleDetailModal = openVehicleDetailModal;
+        window.filterVehicles = filterVehicles;
 
         function renderBookingPanel() {
             const d = _detail.dest;
@@ -3139,6 +3854,9 @@
             const isWe = sd && sd.isWeekend;
             const baseWe = d.price_weekend || (d.price || 0);
             const hasWeNote = isWe && sd && sd.weekendNote;
+            const h = _tripAddons.hotel;
+            const v = _tripAddons.vehicle;
+
             return `
     ${renderStepper(3)}
     <h3 class="h3" style="margin-bottom:1.25rem">Konfirmasi Pesanan</h3>
@@ -3150,6 +3868,29 @@
       ${hasWeNote ? `<div class="price-row" style="color:var(--clr-primary)"><span>${esc(sd.weekendNote)}</span><span>${fmt(unit - (d.price || 0))}</span></div>` : ''}
       <div class="price-row"><span>Total Pembayaran</span><span class="price-total-val">${fmt(total)}</span></div>
     </div>
+
+    <!-- Kelengkapan Perjalanan Interoperabel -->
+    <div class="trip-addons-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:1.1rem">🧭</span>
+          <span style="font-weight:700;font-size:0.875rem;color:var(--text)">Kelengkapan Perjalanan</span>
+        </div>
+        <span style="font-size:0.725rem;background:rgba(200,98,42,0.12);color:var(--clr-primary);padding:2px 8px;border-radius:var(--r-full);font-weight:700">Mitra Tanpa Login</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.75rem;line-height:1.4">
+        Sebelum final pemesanan, Anda bisa memilih hotel dan rental kendaraan di wilayah ini langsung dari JogjaStay & JogjaTrans:
+      </p>
+      
+      <div id="step3HotelBox" class="trip-addon-item ${h ? 'selected' : ''}">
+        ${renderStep3HotelContent()}
+      </div>
+
+      <div id="step3VehicleBox" class="trip-addon-item ${v ? 'selected' : ''}">
+        ${renderStep3VehicleContent()}
+      </div>
+    </div>
+
     <div id="bookResult"></div>
     <div style="display:flex;gap:0.75rem;margin-top:1.5rem">
       <button class="btn btn-ghost" style="flex:1" onclick="goStep(2)">← Kembali</button>
@@ -3296,6 +4037,17 @@
             <div class="eticket-row"><span class="eticket-label">Total Dibayar</span><span class="eticket-val" style="color:var(--clr-primary);font-size:1.1rem">${fmt(b.total)}</span></div>
           </div>
         </div>
+
+        <!-- Kelengkapan Perjalanan Interoperabel -->
+        <div class="eticket" style="margin-top:1.25rem;background:var(--bg-card);border:1px solid var(--border)">
+          <div class="eticket-top" style="background:var(--bg-2);color:var(--text);border-bottom:1px solid var(--border);padding:0.75rem 1.25rem">
+            <div style="font-size:0.85rem;font-weight:700">🧭 Kelengkapan Perjalanan Interoperabel</div>
+          </div>
+          <div style="padding:1rem 1.25rem">
+            ${renderSuccessTripAddons(b)}
+          </div>
+        </div>
+
         <div style="display:flex;gap:0.75rem;margin-top:1.5rem;justify-content:center">
           <button class="btn btn-ghost" onclick="location.hash='#/'">← Beranda</button>
           <button class="btn btn-primary" onclick="location.hash='#/pesanan'">Lihat Pesanan Saya</button>
@@ -3373,6 +4125,23 @@
         <div class="price-row"><span>${isDiff ? 'Selisih' : 'Total bayar'}</span><span class="price-total-val">${fmt(amount)}</span></div>
       </div>
       <div id="payCountdown" style="text-align:center;font-size:1.1rem;font-weight:700;margin:0.75rem 0;color:var(--clr-primary)"></div>
+      <!-- Kelengkapan Perjalanan Interoperabel -->
+      <div class="trip-addons-section" style="margin:1rem 0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:1.1rem">🧭</span>
+            <span style="font-weight:700;font-size:0.875rem;color:var(--text)">Kelengkapan Perjalanan (Mitra)</span>
+          </div>
+          <span style="font-size:0.725rem;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:var(--r-full);font-weight:700">Mitra Tanpa Login</span>
+        </div>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.6rem;line-height:1.4">
+          Sebelum menyelesaikan pembayaran, Anda dapat memilih atau mengubah penginapan dan rental kendaraan tanpa login ke aplikasi mereka:
+        </p>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          <div id="payHotelSection">${renderPayHotelCard(b)}</div>
+          <div id="payVehicleSection">${renderPayVehicleCard(b)}</div>
+        </div>
+      </div>
       <div class="label" style="margin-bottom:0.5rem">Metode Pembayaran</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.5rem;margin-bottom:1rem">${methodsHtml}</div>
       <div id="payInstr"></div>
@@ -3968,6 +4737,7 @@
         /* ═══════════════════════════════════════════════════════════
            INIT
         ═══════════════════════════════════════════════════════ */
+        loadTripAddons();
         readInbound();
         tryRestoreSession().then(route);
     </script>

@@ -309,3 +309,122 @@ def test_w6_itinerary_link_carries_visit_date_and_follows_calendar(server, page)
     for bad in ('token', 'booking', 'email', 'phone', 'price', 'total', 'name='):
         assert bad not in href.lower(), (bad, href)
     assert not page.errors
+
+
+# ───────── Pemilihan Hotel dan Rental Kendaraan Sebelum Pembayaran ─────────
+
+def _mock_transports(page, vehicles):
+    """Tiru API rental transportasi JogjaTrans untuk pengujian peramban."""
+    def transport_route(route):
+        route.fulfill(status=200, content_type='application/json', body=json.dumps({
+            'source': 'jogjatrans',
+            'data': {
+                'startDate': '2026-12-01',
+                'endDate': '2026-12-01',
+                'currency': 'IDR',
+                'days': 1,
+                'vehicles': vehicles
+            }
+        }))
+    page.route('**/api/v1/integrations/transport*', transport_route)
+
+
+def test_interop_trip_addons_selection_in_step3(server, page):
+    d = _day(3)
+    email = f'trip{int(time.time())}@test.com'
+    _api(server, '/auth/register', {'name': 'Uji Addon', 'email': email, 'password': 'Passw0rd!123'})
+    
+    _mock_hotels(page, [{'id': 'H10', 'name': 'Hotel Malioboro Nyaman', 'region': 'kota-yogyakarta', 'price_from': 350000, 'rating': 4.5}])
+    _mock_transports(page, [{'id': 'V10', 'name': 'Toyota Avanza Nyaman', 'type': 'mobil', 'seats': 7, 'transmission': 'Otomatis', 'dailyPrice': 350000, 'available': True}])
+    
+    _open(page, server, f'?destinationId=1&visitDate={d}')
+    page.click('#btnLanjut1')
+    page.wait_for_function("location.hash === '#/masuk'")
+    page.fill('#lEmail', email)
+    page.fill('#lPass', 'Passw0rd!123')
+    page.click('#btnLogin')
+    page.wait_for_function("location.hash === '#/wisata/1'")
+    page.wait_for_timeout(1000)
+    
+    # Lanjut ke Step 2
+    page.click('#btnLanjut1')
+    page.wait_for_selector('#bName')
+    # Lanjut ke Step 3 (Konfirmasi Pesanan)
+    page.click('button:has-text("Lanjut →")')
+    page.wait_for_selector('.trip-addons-section')
+    
+    # Buka picker hotel
+    page.click('#step3HotelBox button:has-text("Pilih Penginapan")')
+    page.wait_for_selector('#modal.open')
+    page.wait_for_selector('#modalBody .vehicle-item-card')
+    page.click('#modalBody .vehicle-item-card button:has-text("Pilih")')
+    page.wait_for_selector('#step3HotelBox.selected')
+    assert page.evaluate('_tripAddons.hotel && _tripAddons.hotel.id') == 'H10'
+    
+    # Buka picker rental kendaraan
+    page.click('#step3VehicleBox button:has-text("Pilih Kendaraan")')
+    page.wait_for_selector('#modal.open')
+    page.wait_for_selector('#modalBody .vehicle-item-card')
+    page.click('#modalBody .vehicle-item-card button:has-text("Pilih")')
+    page.wait_for_selector('#step3VehicleBox.selected')
+    assert page.evaluate('_tripAddons.vehicle && _tripAddons.vehicle.id') == 'V10'
+    assert not page.errors
+
+
+def test_interop_trip_addons_displayed_on_payment_and_success(server, page):
+    d = _day(4)
+    email = f'pay{int(time.time())}@test.com'
+    _api(server, '/auth/register', {'name': 'Uji Bayar Addon', 'email': email, 'password': 'Passw0rd!123'})
+    
+    _mock_hotels(page, [{'id': 'H20', 'name': 'Grand Hotel Jogja', 'region': 'kota-yogyakarta', 'price_from': 500000, 'rating': 4.8}])
+    _mock_transports(page, [{'id': 'V20', 'name': 'Honda BeAT Gesit', 'type': 'motor', 'seats': 2, 'transmission': 'Otomatis', 'dailyPrice': 70000, 'available': True}])
+    
+    _open(page, server, f'?destinationId=1&visitDate={d}')
+    page.click('#btnLanjut1')
+    page.wait_for_function("location.hash === '#/masuk'")
+    page.fill('#lEmail', email)
+    page.fill('#lPass', 'Passw0rd!123')
+    page.click('#btnLogin')
+    page.wait_for_function("location.hash === '#/wisata/1'")
+    page.wait_for_timeout(1000)
+    
+    # Lanjut ke Step 2 & 3
+    page.click('#btnLanjut1')
+    page.wait_for_selector('#bName')
+    page.click('button:has-text("Lanjut →")')
+    page.wait_for_selector('.trip-addons-section')
+    
+    # Pilih hotel & kendaraan di Step 3
+    page.click('#step3HotelBox button:has-text("Pilih Penginapan")')
+    page.wait_for_selector('#modal.open')
+    page.wait_for_selector('#modalBody .vehicle-item-card')
+    page.click('#modalBody .vehicle-item-card button:has-text("Pilih")')
+    
+    page.click('#step3VehicleBox button:has-text("Pilih Kendaraan")')
+    page.wait_for_selector('#modal.open')
+    page.wait_for_selector('#modalBody .vehicle-item-card')
+    page.click('#modalBody .vehicle-item-card button:has-text("Pilih")')
+    
+    # Klik Pesan Sekarang untuk lanjut ke halaman bayar
+    page.click('#btnBook')
+    page.wait_for_function("location.hash.startsWith('#/bayar/')")
+    page.wait_for_selector('#payRoot .trip-addons-section')
+    
+    # Pastikan hotel & kendaraan terpilih muncul di halaman pembayaran sebelum tombol bayar ditekan
+    assert 'Grand Hotel Jogja' in page.inner_text('#payHotelSection')
+    assert 'Honda BeAT Gesit' in page.inner_text('#payVehicleSection')
+    
+    # Pilih metode pembayaran
+    page.click('.pay-method[data-id="qris"]')
+    assert page.is_enabled('#btnPayNow')
+    
+    # Klik Saya Sudah Bayar
+    page.click('#btnPayNow')
+    page.wait_for_selector('.eticket')
+    
+    # Pastikan di layar sukses pesanan berhasil memuat rencana perjalanan lengkap
+    text = page.inner_text('body')
+    assert 'Pesanan Berhasil!' in text
+    assert 'Grand Hotel Jogja' in text
+    assert 'Honda BeAT Gesit' in text
+    assert not page.errors
