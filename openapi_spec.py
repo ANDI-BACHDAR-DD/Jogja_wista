@@ -115,7 +115,8 @@ def get_openapi_spec():
                         "created_at": {"type": "string", "format": "date-time", "example": "2026-11-12T10:00:00"},
                         "name": {"type": "string", "example": "Budi Santoso"},
                         "email": {"type": "string", "example": "budi@example.com"},
-                        "phone": {"type": "string", "example": "08123456789"}
+                        "phone": {"type": "string", "example": "08123456789"},
+                        "payment_note": {"type": "string", "nullable": True, "description": "Hanya pada pesanan partner: PAID berarti dicatat lunas oleh kanal partner (simulasi), bukan pembayaran lewat aplikasi ini.", "example": "Dicatat lunas oleh kanal partner (simulasi); tidak ada pembayaran melalui aplikasi ini."}
                     }
                 },
                 "HotelRecommendation": {

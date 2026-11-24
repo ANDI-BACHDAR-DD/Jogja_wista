@@ -123,6 +123,7 @@ Membuat tiket langsung dari sistem partner.
 - `external_ref`: Referensi unik di sistem partner (misalnya ID booking hotel atau transaksi itinerary).
 - `Idempotency-Key` (Header, opsional tapi sangat disarankan): Menjamin idempotensi transaksi.
 - Status pesanan partner **langsung menjadi `PAID`** (pembayaran ditangani oleh sistem partner).
+  - Arti `PAID` di sini: **dicatat lunas oleh kanal partner (simulasi)**, bukan pembayaran lewat aplikasi ini. Respons memuat `payment_note` yang menjelaskannya. Pesanan partner tidak berstatus `PENDING` sehingga tidak ikut kedaluwarsa dalam 15 menit.
 - Sistem Wisata Jogja langsung mengirim email konfirmasi tiket ke `customer.email`.
 
 ```bash
@@ -163,7 +164,8 @@ curl -X POST "http://localhost:5000/api/v1/partner/bookings" \
     "name": "Keraton Yogyakarta",
     "region": "kota-yogyakarta"
   },
-  "tier": "base"
+  "tier": "base",
+  "payment_note": "Dicatat lunas oleh kanal partner (simulasi); tidak ada pembayaran melalui aplikasi ini."
 }
 ```
 
