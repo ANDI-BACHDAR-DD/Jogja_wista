@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 import urllib.request
@@ -12,6 +13,8 @@ _cache = {}
 CACHE_TTL = 60
 
 DEFAULT_HOTEL_API_URL = 'https://jogjastay-hotel-service.jogjawisata.workers.dev'
+DEFAULT_TRANSPORT_API_URL = 'https://jogjatrans-service.jogjawisata.workers.dev'
+DEFAULT_TRANSPORT_PATH = '/api/v1/rentals/vehicles'
 
 WISATA_TO_HOTEL_REGION = {
     'kota-yogyakarta': 'kota-yogyakarta',
@@ -60,6 +63,9 @@ class UpstreamError(Exception):
     pass
 
 class UpstreamNotFoundError(Exception):
+    pass
+
+class InvalidParamsError(Exception):
     pass
 
 DEFAULT_HEADERS = {
@@ -150,10 +156,22 @@ def get_hotel_timeout():
     except Exception:
         return 5
 
+def _is_testing():
+    if os.getenv('TESTING') == '1':
+        return True
+    try:
+        from flask import current_app
+        return bool(current_app and current_app.config.get('TESTING'))
+    except Exception:
+        return False
+
 def get_transport_config():
-    url = os.getenv('TRANSPORT_API_URL', '').strip()
+    if 'TRANSPORT_API_URL' in os.environ:
+        url = os.environ.get('TRANSPORT_API_URL', '').strip()
+    else:
+        url = '' if _is_testing() else DEFAULT_TRANSPORT_API_URL
     key = os.getenv('TRANSPORT_API_KEY', '').strip()
-    path = os.getenv('TRANSPORT_SEARCH_PATH', '/api/v1/routes').strip()
+    path = os.getenv('TRANSPORT_SEARCH_PATH', DEFAULT_TRANSPORT_PATH).strip()
     return url, key, path
 
 def get_hotels(params):
@@ -248,10 +266,49 @@ def normalize_hotel(raw, base_url=None):
         "rating": rating
     }
 
+def _real_date(value):
+    import datetime as _dt
+    if not isinstance(value, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', value):
+        return None
+    try:
+        return _dt.date.fromisoformat(value)
+    except ValueError:
+        return None
+
+def rental_params(params):
+    """Validasi dan whitelist parameter katalog rental JogjaTrans.
+    Hanya parameter yang dikenal yang diteruskan; parameter lain dibuang."""
+    start = _real_date(params.get('startDate'))
+    end = _real_date(params.get('endDate'))
+    if not start or not end:
+        raise InvalidParamsError('startDate dan endDate wajib berupa tanggal kalender nyata (YYYY-MM-DD)')
+    if end < start:
+        raise InvalidParamsError('endDate tidak boleh sebelum startDate')
+    if (end - start).days + 1 > 30:
+        raise InvalidParamsError('Periode sewa maksimal 30 hari')
+    out = {'startDate': start.isoformat(), 'endDate': end.isoformat()}
+    if params.get('type') is not None:
+        if params['type'] not in ('all', 'mobil', 'motor'):
+            raise InvalidParamsError('type harus all, mobil, atau motor')
+        out['type'] = params['type']
+    if params.get('withDriver') is not None:
+        if params['withDriver'] not in ('true', 'false'):
+            raise InvalidParamsError('withDriver harus true atau false')
+        out['withDriver'] = params['withDriver']
+    if params.get('category') is not None:
+        if not re.fullmatch(r'[a-z0-9_-]{1,30}', params['category']):
+            raise InvalidParamsError('category tidak valid')
+        out['category'] = params['category']
+    return out
+
 def get_transport(params):
     url, key, path = get_transport_config()
     if not url:
         raise IntegrationNotConfiguredError("Integrasi transportasi belum dikonfigurasi")
+    # Jalur bawaan = katalog rental JogjaTrans (kontrak tervalidasi).
+    # Bila TRANSPORT_SEARCH_PATH diganti eksplisit, parameter diteruskan apa adanya (perilaku lama).
+    if 'TRANSPORT_SEARCH_PATH' not in os.environ:
+        params = rental_params(params)
     return http_get(url, path, params=params, api_key=key, timeout=5)
 
 def ping_service(base_url, timeout=3):

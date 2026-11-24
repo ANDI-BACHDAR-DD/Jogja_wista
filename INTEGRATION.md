@@ -340,7 +340,8 @@ def verify_wisata_webhook(raw_body_bytes: bytes, signature_header: str, secret: 
 Wisata Jogja juga menyediakan endpoint adaptor transparan untuk memanggil layanan Hotel dan Transport:
 
 - `GET /api/v1/integrations/hotels?region=<slug>&check_in=&check_out=`
-- `GET /api/v1/integrations/transport?origin=&destination=&date=`
+- `GET /api/v1/integrations/transport?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD[&type=all|mobil|motor][&withDriver=true|false][&category=]` (katalog rental JogjaTrans; `startDate` dan `endDate` wajib, maksimal 30 hari; parameter lain dibuang; galat 400 `INVALID_PARAMS` bila tidak valid. Bila `TRANSPORT_SEARCH_PATH` diisi eksplisit, parameter diteruskan apa adanya seperti sebelumnya)
+- `GET /api/v1/semantic` (kamus CRS lintas layanan v0.1.1, salinan byte-identik dari JogjaTrans)
 - `GET /api/v1/integrations/status` (Cek kesehatan & kesiapan integrasi)
 
 Format respon:
@@ -527,9 +528,9 @@ Berikut konfigurasi environment yang tersedia:
 | `HOTEL_API_KEY` | String | *(kosong)* | API Key opsional untuk autentikasi ke Hotel Service (kosong untuk katalog publik). |
 | `HOTEL_SEARCH_PATH` | String | `/api/v1/hotels` | Path pencarian di Hotel Service. |
 | `HOTEL_TIMEOUT` | Integer | `5` | Batas waktu timeout pemanggilan Hotel Service (detik). |
-| `TRANSPORT_API_URL` | String | *(kosong)* | Base URL layanan Transport. |
+| `TRANSPORT_API_URL` | String | `https://jogjatrans-service.jogjawisata.workers.dev` (kosong saat tes) | Base URL layanan Transport. Isi string kosong untuk menonaktifkan. |
 | `TRANSPORT_API_KEY` | String | *(kosong)* | API Key untuk autentikasi ke Transport Service. |
-| `TRANSPORT_SEARCH_PATH`| String | `/api/v1/routes` | Path pencarian di Transport Service. |
+| `TRANSPORT_SEARCH_PATH`| String | `/api/v1/rentals/vehicles` | Path pencarian di Transport Service. Mengisi variabel ini mematikan validasi parameter rental. |
 | `SECRET_KEY` | String | *(auto)* | Secret key Flask untuk session dan JWT tokens. |
 | `ADMIN_TOKEN` | String | `admin123` | Token statis untuk header `X-Admin-Token`. |
 | `ADMIN_EMAIL` | String | `admin@wisatajogja.id` | Email default admin. |

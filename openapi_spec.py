@@ -711,17 +711,26 @@ def get_openapi_spec():
             "/api/v1/integrations/transport": {
                 "get": {
                     "tags": ["Integrations", "Public"],
-                    "summary": "Pencarian rute melalui Transport Service",
+                    "summary": "Katalog rental kendaraan JogjaTrans untuk periode tertentu",
                     "parameters": [
-                        {"name": "origin", "in": "query", "schema": {"type": "string"}},
-                        {"name": "destination", "in": "query", "schema": {"type": "string"}},
-                        {"name": "date", "in": "query", "schema": {"type": "string", "format": "date"}}
+                        {"name": "startDate", "in": "query", "required": True, "schema": {"type": "string", "format": "date"}},
+                        {"name": "endDate", "in": "query", "required": True, "schema": {"type": "string", "format": "date"}, "description": "Maksimal 30 hari sejak startDate (inklusif)"},
+                        {"name": "type", "in": "query", "schema": {"type": "string", "enum": ["all", "mobil", "motor"]}},
+                        {"name": "withDriver", "in": "query", "schema": {"type": "string", "enum": ["true", "false"]}},
+                        {"name": "category", "in": "query", "schema": {"type": "string"}}
                     ],
                     "responses": {
                         "200": {"description": "Daftar rute terbungkus", "content": {"application/json": {"schema": {"type": "object", "properties": {"source": {"type": "string", "example": "transport"}, "data": {"type": "object"}}}}}},
                         "502": {"description": "Layanan transportasi tidak dapat dihubungi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
                         "503": {"description": "Integrasi transportasi belum dikonfigurasi", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
                     }
+                }
+            },
+            "/api/v1/semantic": {
+                "get": {
+                    "tags": ["Integrations", "Public"],
+                    "summary": "Kamus CRS lintas layanan v0.1.1",
+                    "responses": {"200": {"description": "Kamus CRS (identik dengan JogjaTrans)", "content": {"application/json": {"schema": {"type": "object"}}}}}
                 }
             },
             "/api/v1/integrations/status": {

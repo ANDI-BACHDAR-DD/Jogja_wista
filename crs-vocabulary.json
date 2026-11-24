@@ -1,0 +1,182 @@
+{
+  "@context": {
+    "@vocab": "https://example.org/jogjatrip/crs#",
+    "diy": "https://example.org/jogjatrip/diy#",
+    "schema": "https://schema.org/",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "conceptId": "@id",
+    "label": "skos:prefLabel",
+    "aliases": "skos:altLabel"
+  },
+  "name": "JogjaTrip Common Representational System (CRS)",
+  "version": "0.1.1",
+  "status": "DRAFT - disusun dari kode keempat repo pada audit 23 November 2026. Ganti namespace example.org dengan namespace kelompok sebelum dikumpulkan.",
+  "principles": [
+    "CRS bukan aplikasi atau database perantara. Ini kamus bersama; tiap layanan memetakan istilahnya sendiri ke kamus ini.",
+    "Kesamaan makna dinyatakan eksplisit lewat relasi (exactConcept, sameRole, relatedMatch). Hal yang TIDAK boleh disamakan dicatat di nonEquivalences.",
+    "ID sumber (hotelId, destination_id, vehicle id, kode booking) hanya unik di dalam provider. Gunakan pasangan provider + resourceId.",
+    "Tidak ada reasoner OWL, SPARQL, atau triple store. File ini adalah JSON-LD ringan yang dapat dibaca langsung oleh kode."
+  ],
+
+  "regions": [
+    {
+      "conceptId": "diy:kota-yogyakarta",
+      "label": "Kota Yogyakarta",
+      "administrativeType": "city",
+      "providerRepresentation": {"hotel": "Kota Yogyakarta", "transport": "Kota Yogyakarta", "wisata": "kota-yogyakarta", "itinerary": "Kota Yogyakarta"},
+      "aliases": ["kota jogja", "kota yogya", "yogyakarta city", "kota yogyakarta"]
+    },
+    {
+      "conceptId": "diy:kabupaten-sleman",
+      "label": "Sleman",
+      "administrativeType": "regency",
+      "providerRepresentation": {"hotel": "Sleman", "transport": "Sleman", "wisata": "kabupaten-sleman", "itinerary": "Sleman"},
+      "aliases": ["kabupaten sleman", "kab sleman", "kab. sleman", "sleman"]
+    },
+    {
+      "conceptId": "diy:kabupaten-bantul",
+      "label": "Bantul",
+      "administrativeType": "regency",
+      "providerRepresentation": {"hotel": "Bantul", "transport": "Bantul", "wisata": "kabupaten-bantul", "itinerary": "Bantul"},
+      "aliases": ["kabupaten bantul", "kab bantul", "kab. bantul", "bantul"]
+    },
+    {
+      "conceptId": "diy:kabupaten-gunungkidul",
+      "label": "Gunungkidul",
+      "administrativeType": "regency",
+      "providerRepresentation": {"hotel": "Gunungkidul", "transport": "Gunungkidul", "wisata": "kabupaten-gunungkidul", "itinerary": "Gunungkidul"},
+      "aliases": ["kabupaten gunung kidul", "kabupaten gunungkidul", "gunung kidul", "gunungkidul", "kab. gunung kidul"]
+    },
+    {
+      "conceptId": "diy:kabupaten-kulon-progo",
+      "label": "Kulon Progo",
+      "administrativeType": "regency",
+      "providerRepresentation": {"hotel": "Kulon Progo", "transport": "Kulon Progo", "wisata": "kabupaten-kulon-progo", "itinerary": "Kulon Progo"},
+      "aliases": ["kabupaten kulon progo", "kabupaten kulonprogo", "kulonprogo", "kulon progo", "kab. kulon progo"]
+    }
+  ],
+  "regionRules": [
+    "'Jogja' atau 'DIY' saja berarti provinsi dan TIDAK dipetakan ke Kota Yogyakarta.",
+    "Bila satu objek membawa dua label wilayah yang bertentangan, objek ditolak dari pemetaan, bukan dipaksa cocok."
+  ],
+
+  "entityTypes": [
+    {"id": "lodging", "provider": "hotel", "schemaOrg": "schema:LodgingBusiness", "regionBound": true},
+    {"id": "tourist_attraction", "provider": "wisata", "schemaOrg": "schema:TouristAttraction", "regionBound": true},
+    {"id": "vehicle_rental", "provider": "transport", "schemaOrg": "schema:Vehicle", "regionBound": false,
+     "note": "Katalog rental JogjaTrans (/api/v1/rentals/vehicles) tidak terikat wilayah, sehingga regionId = null."},
+    {"id": "transport_trip", "provider": "transport", "schemaOrg": "schema:Trip", "regionBound": true,
+     "note": "Opsi perjalanan (/api/v1/transport/options) memakai originRegionId dan destinationRegionId, bukan satu regionId."}
+  ],
+
+  "commonResourceShape": {
+    "description": "Bentuk minimum yang disarankan untuk objek katalog yang dikembalikan antar-layanan. Field tambahan boleh ada.",
+    "required": ["provider", "entityType", "resourceId", "name", "currency"],
+    "fields": {
+      "provider": "hotel | wisata | transport",
+      "entityType": "lodging | tourist_attraction | vehicle_rental | transport_trip",
+      "resourceId": "string; hanya unik di dalam provider",
+      "regionId": "conceptId wilayah, atau null (vehicle_rental)",
+      "originRegionId": "hanya transport_trip",
+      "destinationRegionId": "hanya transport_trip",
+      "name": "string",
+      "description": "string, boleh kosong",
+      "imageUrl": "URL https absolut atau null",
+      "price": "angka atau null bila tidak diketahui",
+      "priceUnit": "night | ticket | day | trip | person",
+      "currency": "IDR"
+    },
+    "currentCoverage": "Per audit: hanya rekomendasi di JogjaStay (src/semantic.mjs asDestination/asHotel dan destination() di logic.mjs) yang sudah memakai bentuk ini. Katalog JogjaStay (toHotel/toRoom), JogjaTrans, dan Wisata belum."
+  },
+
+  "priceUnits": [
+    {"id": "night", "usedBy": "hotel.pricePerNight", "meaning": "per kamar per malam"},
+    {"id": "ticket", "usedBy": "wisata.price, wisata.unit_price", "meaning": "per tiket (per orang)"},
+    {"id": "day", "usedBy": "transport.dailyPrice (rental)", "meaning": "per kendaraan per hari; driverDailyPrice adalah tambahan per hari"},
+    {"id": "trip", "usedBy": "transport.price bila perPerson=false", "meaning": "per perjalanan untuk seluruh rombongan"},
+    {"id": "person", "usedBy": "transport.price bila perPerson=true", "meaning": "per penumpang"}
+  ],
+
+  "fieldConcepts": [
+    {"conceptId": "common:administrative-region", "hotel": ["city"], "wisata": ["region"], "transport": ["origin", "destination"], "relation": "exactConcept",
+     "notes": "Representasi string berbeda; rujuk conceptId wilayah. Transport_trip memakai dua wilayah."},
+    {"conceptId": "common:resource-id", "hotel": ["hotelId", "roomId"], "wisata": ["id", "destination_id"], "transport": ["id (kendaraan)", "optionId"], "relation": "relatedType",
+     "notes": "Namespace berbeda, tidak boleh dibandingkan antar-provider."},
+    {"conceptId": "common:resource-title", "hotel": ["name"], "wisata": ["name"], "transport": ["name"], "relation": "relatedType"},
+    {"conceptId": "common:resource-description", "hotel": ["description"], "wisata": ["description"], "transport": ["description"], "relation": "sameProperty"},
+    {"conceptId": "common:photo-of-resource", "hotel": ["imageUrl"], "wisata": ["photos[]", "imageUrl"], "transport": [], "relation": "sameProperty",
+     "notes": "Foto Wisata dapat berupa path relatif; selesaikan terhadap URL asal Wisata. Katalog JogjaTrans tidak mengembalikan foto lewat API ini."},
+    {"conceptId": "common:unit-price", "hotel": ["pricePerNight"], "wisata": ["price", "unit_price"], "transport": ["price", "dailyPrice"], "relation": "relatedMatch",
+     "notes": "Satuan berbeda. Wajib sertakan priceUnit; jangan dijumlahkan tanpa konversi."},
+    {"conceptId": "common:total-amount", "hotel": ["totalPrice"], "wisata": ["total"], "transport": ["totalPrice"], "relation": "sameRole",
+     "notes": "Semua IDR, dihitung dengan aturan berbeda. Harga Transport adalah simulasi."},
+    {"conceptId": "common:service-start", "hotel": ["checkIn"], "wisata": ["visit_date"], "transport": ["travelDate", "startDate"], "relation": "relatedMatch",
+     "notes": "Tanggal mulai layanan berbeda arti; jangan disalin otomatis antar-layanan."},
+    {"conceptId": "common:service-end", "hotel": ["checkOut"], "wisata": [], "transport": ["endDate"], "relation": "relatedMatch",
+     "notes": "Wisata tidak punya tanggal akhir. travelDate (trip) tidak punya akhir."},
+    {"conceptId": "common:party-size", "hotel": ["guests"], "wisata": ["qty"], "transport": ["passengers"], "relation": "relatedMatch",
+     "notes": "Tamu menginap, tiket, dan penumpang tidak identik. Rental kendaraan memakai kapasitas (seats), bukan jumlah penumpang."},
+    {"conceptId": "common:service-availability", "hotel": ["unitsAvailable"], "wisata": ["available", "remaining"], "transport": ["available", "quotaAvailable", "unitsAvailable"], "relation": "relatedMatch",
+     "notes": "Stok kamar per malam, kuota tiket per tanggal, dan stok kendaraan/kuota rute berbeda."},
+    {"conceptId": "common:booking-reference", "hotel": ["bookingId"], "wisata": ["code"], "transport": ["bookingId"], "relation": "sameRole",
+     "notes": "Awalan berbeda (HB-, WJ-, TR-). Hotel dan Transport sama-sama bernama bookingId tetapi beda namespace."},
+    {"conceptId": "common:customer-name", "hotel": ["guestName"], "wisata": ["name", "customer.name"], "transport": ["customerName"], "relation": "sameRole"},
+    {"conceptId": "common:customer-email", "hotel": ["guestEmail"], "wisata": ["email", "customer.email"], "transport": [], "relation": "hotelAndWisataOnly"},
+    {"conceptId": "common:customer-phone", "hotel": ["guestPhone"], "wisata": ["phone", "customer.phone"], "transport": ["customer_phone (input rental, tidak dikembalikan API)"], "relation": "sameRole"},
+    {"conceptId": "common:reservation-state", "hotel": ["status"], "wisata": ["status"], "transport": ["status"], "relation": "relatedMatch",
+     "notes": "Lihat statusMappings. Status reservasi dan status pembayaran dipisah."},
+    {"conceptId": "common:payment-state", "hotel": ["payment.status"], "wisata": ["status (diturunkan)"], "transport": ["paymentState (vehicle_rental)"], "relation": "relatedMatch",
+     "notes": "Transport terdiri dari dua layanan: transport_trip (TR-) tidak memproses pembayaran, sehingga not_applicable; vehicle_rental (RT-) memiliki paymentState unpaid/paid, dan paid hanya setelah staf memverifikasi penerimaan dana secara manual saat serah terima. Tidak ada pembayaran online atau payment gateway."},
+    {"conceptId": "common:currency", "hotel": ["IDR"], "wisata": ["IDR"], "transport": ["currency"], "relation": "exactConcept"},
+    {"conceptId": "common:simulation-flag", "hotel": [], "wisata": [], "transport": ["simulation", "priceType=SIMULATED"], "relation": "transportOnly",
+     "notes": "Harga dan kuota Transport adalah simulasi; Itinerary harus menampilkannya sebagai estimasi."},
+    {"conceptId": "common:created-at", "hotel": ["createdAt"], "wisata": ["created_at"], "transport": ["createdAt"], "relation": "sameRole",
+     "notes": "Hati-hati zona waktu: Hotel biasanya UTC (ISO), Wisata dapat berupa waktu lokal tanpa offset."},
+    {"conceptId": "common:error", "hotel": ["error:true", "code", "message"], "wisata": ["error (teks)", "code"], "transport": ["code", "message"], "itinerary": ["error (teks)"], "relation": "sameProperty",
+     "notes": "Empat bentuk error berbeda. Normalisasi ke {code, message}; jangan menyamakan nilai code antar-layanan."}
+  ],
+
+  "statusMappings": {
+    "reservationState": {
+      "values": {
+        "requested": "Permintaan tercatat, belum dikonfirmasi penyedia/staf",
+        "in_review": "Sedang diproses staf penyedia",
+        "awaiting_payment": "Menunggu pembayaran",
+        "reserved": "Reservasi sah menurut provider",
+        "in_progress": "Layanan sedang berjalan (mis. tamu sudah check-in)",
+        "completed": "Layanan selesai",
+        "cancelled": "Dibatalkan",
+        "refunded": "Dikembalikan dana",
+        "expired": "Kedaluwarsa",
+        "unknown": "Respons tidak dapat dipetakan; jangan di-retry tanpa audit"
+      },
+      "hotel": {"confirmed": "reserved", "checked_in": "in_progress", "checked_out": "completed", "cancelled": "cancelled"},
+      "wisata": {"PENDING": "awaiting_payment", "PAID": "reserved", "REFUNDED": "refunded", "EXPIRED": "expired"},
+      "transport": {"recorded": "requested", "contacted": "in_review", "confirmed": "reserved", "cancelled": "cancelled"}
+    },
+    "paymentState": {
+      "values": ["unpaid", "paid", "refunded", "partially_refunded", "expired", "not_applicable"],
+      "hotel": {"unpaid": "unpaid", "paid": "paid", "refunded": "refunded", "partially_refunded": "partially_refunded"},
+      "wisata": {"PENDING": "unpaid", "PAID": "paid", "REFUNDED": "refunded", "EXPIRED": "expired"},
+      "transport": {"*": "not_applicable"},
+      "transportTrip": {"*": "not_applicable"},
+      "vehicleRental": {"unpaid": "unpaid", "paid": "paid"}
+    },
+    "aggregatorNote": "Itinerary (main.go statusCanonical) memetakan PAID -> CONFIRMED dan tidak mengenal recorded/contacted (jatuh ke UNKNOWN). Selaraskan dengan tabel ini saat adapter Transport ditambahkan: reservasi 'reserved' = CONFIRMED, 'requested'/'in_review'/'awaiting_payment' = PENDING. PaymentState HARUS dipetakan berdasarkan entityType: transport_trip tetap not_applicable; vehicle_rental unpaid/paid adalah status penerimaan dana yang dicatat staf, bukan pembayaran gateway."
+  },
+
+  "nonEquivalences": [
+    "city = Kota Yogyakarta tidak sama dengan Provinsi DIY",
+    "hotelId, destination_id, dan id kendaraan berasal dari namespace berbeda walaupun nilainya mirip",
+    "checkIn tidak sama dengan visit_date maupun travelDate",
+    "guests tidak selalu sama dengan qty atau passengers",
+    "pricePerNight tidak sama dengan harga tiket per orang maupun tarif rental per hari",
+    "status paid (rental) berarti verifikasi pembayaran oleh staf saat serah terima; bukan bukti payment gateway online",
+    "pilihan add-on Hotel/Wisata yang tersimpan di JogjaTrans adalah minat, bukan pemesanan pada penyedia mitra",
+    "perPerson=true (harga per penumpang) tidak sama dengan perPerson=false (harga per perjalanan)",
+    "confirmed (Hotel) tidak sama dengan PAID (Wisata); recorded (Transport) bukan reservasi yang sudah dikonfirmasi",
+    "hotel cancelled tidak sama dengan wisata REFUNDED",
+    "kedekatan antar-objek TIDAK disimpulkan dari kesamaan wilayah; butuh koordinat dan routing terverifikasi",
+    "harga Transport bersifat simulasi dan tidak boleh disajikan sebagai tarif riil"
+  ]
+}

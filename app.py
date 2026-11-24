@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 import webhooks
 import integrations
 
-from flask import Flask, Blueprint, g, jsonify, request, send_from_directory
+from flask import Flask, Blueprint, Response, g, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -1125,10 +1125,23 @@ def integration_transport():
     try:
         data = integrations.get_transport(request.args.to_dict())
         return jsonify(source='transport', data=data), 200
+    except integrations.InvalidParamsError as e:
+        return err(str(e), 400, 'INVALID_PARAMS')
     except integrations.IntegrationNotConfiguredError:
         return err('Integrasi transportasi belum dikonfigurasi', 503, 'INTEGRATION_NOT_CONFIGURED')
     except integrations.UpstreamError:
         return err('Gagal menghubungi layanan transportasi', 502, 'UPSTREAM_ERROR')
+
+CRS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'crs-vocabulary.json')
+
+@api_bp.get('/semantic')
+def semantic():
+    """Kamus CRS lintas layanan (salinan byte-identik dari JogjaTrans, v0.1.1)."""
+    with open(CRS_FILE, 'rb') as f:
+        body = f.read()
+    resp = Response(body, mimetype='application/json')
+    resp.headers['Cache-Control'] = 'public, max-age=300'
+    return resp
 
 @api_bp.get('/integrations/status')
 def integration_status():

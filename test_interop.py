@@ -666,7 +666,7 @@ class TestPhase5Integrations(unittest.TestCase):
             raise urllib.error.URLError("Upstream timeout")
 
         with patch('urllib.request.urlopen', side_effect=failing_urlopen):
-            r = client.get('/api/v1/integrations/transport?origin=jogja&destination=solo')
+            r = client.get('/api/v1/integrations/transport?startDate=2099-01-10&endDate=2099-01-12')
             self.assertEqual(r.status_code, 502)
             data = r.get_json()
             self.assertEqual(data['code'], 'UPSTREAM_ERROR')
@@ -1099,3 +1099,125 @@ class TestUserAgentAndHeaders(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
+
+class TestTransportRentalAndSemantic(unittest.TestCase):
+    """W4 (transport) dan W7 (/semantic). Tanpa jaringan: urlopen ditiru."""
+    class MockResp:
+        def __init__(self, data):
+            import json
+            self.data = json.dumps(data).encode('utf-8')
+            self.status = 200
+        def read(self):
+            return self.data
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            pass
+
+    def setUp(self):
+        import integrations
+        integrations._cache.clear()
+        self._saved = {k: os.environ.get(k) for k in ('TRANSPORT_API_URL', 'TRANSPORT_API_KEY', 'TRANSPORT_SEARCH_PATH')}
+        os.environ['TRANSPORT_API_URL'] = 'https://mock-trans.local'
+        os.environ.pop('TRANSPORT_API_KEY', None)
+        os.environ.pop('TRANSPORT_SEARCH_PATH', None)
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def test_01_default_path_is_rental_catalog_and_whitelists_params(self):
+        from unittest.mock import patch
+        captured = []
+        def fake(req, timeout=5):
+            captured.append(req.full_url)
+            return self.MockResp({'vehicles': [{'id': 'M01'}], 'startDate': '2099-01-10', 'endDate': '2099-01-12'})
+        with patch('urllib.request.urlopen', side_effect=fake):
+            r = client.get('/api/v1/integrations/transport?startDate=2099-01-10&endDate=2099-01-12'
+                           '&type=mobil&withDriver=false&token=SECRET&bookingId=RT-1')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()['source'], 'transport')
+        self.assertEqual(len(captured), 1)
+        url = captured[0]
+        self.assertIn('mock-trans.local/api/v1/rentals/vehicles?', url)
+        for part in ('startDate=2099-01-10', 'endDate=2099-01-12', 'type=mobil', 'withDriver=false'):
+            self.assertIn(part, url)
+        self.assertNotIn('SECRET', url)
+        self.assertNotIn('bookingId', url)
+
+    def test_02_invalid_params_rejected_before_upstream(self):
+        from unittest.mock import patch
+        bad = [
+            '',                                                    # tanggal hilang
+            '?startDate=2099-01-10',                               # endDate hilang
+            '?startDate=2099-02-30&endDate=2099-03-01',            # tanggal kalender palsu
+            '?startDate=2099-01-12&endDate=2099-01-10',            # terbalik
+            '?startDate=2099-01-01&endDate=2099-02-01',            # 32 hari
+            '?startDate=2099-01-10&endDate=2099-01-12&type=bus',   # type tidak dikenal
+            '?startDate=2099-01-10&endDate=2099-01-12&withDriver=yes',
+            '?startDate=2099-01-10&endDate=2099-01-12&category=a b',
+        ]
+        with patch('urllib.request.urlopen', side_effect=AssertionError('upstream tidak boleh dipanggil')):
+            for q in bad:
+                r = client.get('/api/v1/integrations/transport' + q)
+                self.assertEqual(r.status_code, 400, q)
+                self.assertEqual(r.get_json()['code'], 'INVALID_PARAMS', q)
+
+    def test_03_thirty_days_allowed(self):
+        from unittest.mock import patch
+        with patch('urllib.request.urlopen', return_value=self.MockResp({'vehicles': []})):
+            r = client.get('/api/v1/integrations/transport?startDate=2099-01-01&endDate=2099-01-30')
+        self.assertEqual(r.status_code, 200)
+
+    def test_04_explicit_search_path_keeps_legacy_passthrough(self):
+        from unittest.mock import patch
+        os.environ['TRANSPORT_SEARCH_PATH'] = '/api/v1/routes'
+        captured = []
+        def fake(req, timeout=5):
+            captured.append(req.full_url)
+            return self.MockResp({'routes': []})
+        with patch('urllib.request.urlopen', side_effect=fake):
+            r = client.get('/api/v1/integrations/transport?origin=jogja&destination=solo')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('mock-trans.local/api/v1/routes', captured[0])
+        self.assertIn('origin=jogja', captured[0])
+
+    def test_05_default_url_used_when_env_absent_outside_tests(self):
+        import integrations
+        os.environ.pop('TRANSPORT_API_URL', None)
+        with app.app.app_context():
+            self.assertTrue(integrations._is_testing())  # di bawah tes, bawaan sengaja kosong agar tidak memanggil jaringan
+            url, _, path = integrations.get_transport_config()
+        self.assertEqual(url, '')
+        self.assertEqual(path, '/api/v1/rentals/vehicles')
+        app.app.config['TESTING'] = False
+        try:
+            with app.app.app_context():
+                url, _, _ = integrations.get_transport_config()
+            self.assertEqual(url, integrations.DEFAULT_TRANSPORT_API_URL)
+        finally:
+            app.app.config['TESTING'] = True
+        self.assertEqual(integrations.DEFAULT_TRANSPORT_API_URL, 'https://jogjatrans-service.jogjawisata.workers.dev')
+
+    def test_06_semantic_endpoint_serves_pinned_crs(self):
+        import hashlib, json
+        for prefix in ('/api', '/api/v1'):
+            r = client.get(prefix + '/semantic')
+            self.assertEqual(r.status_code, 200, prefix)
+            self.assertEqual(r.mimetype, 'application/json')
+            body = r.get_data()
+            data = json.loads(body)
+            self.assertEqual(data['version'], '0.1.1')
+            # Git blob SHA-1 dari crs-vocabulary.json di JogjaTrans main (d40b68b): byte-identik
+            blob = hashlib.sha1(b'blob %d\x00' % len(body) + body).hexdigest()
+            self.assertEqual(blob, '14eee633a6641d373b53e48b8dc7586cd6f24f5d')
+
+    def test_07_semantic_has_five_diy_regions(self):
+        data = client.get('/api/v1/semantic').get_json()
+        ids = {r['conceptId'] for r in data['regions']}
+        self.assertEqual(ids, {'diy:kota-yogyakarta', 'diy:kabupaten-sleman', 'diy:kabupaten-bantul',
+                               'diy:kabupaten-gunungkidul', 'diy:kabupaten-kulon-progo'})
