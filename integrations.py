@@ -62,6 +62,11 @@ class UpstreamError(Exception):
 class UpstreamNotFoundError(Exception):
     pass
 
+DEFAULT_HEADERS = {
+    "User-Agent": "WisataJogja/1.0 (interoperabilitas; layanan Wisata)",
+    "Accept": "application/json"
+}
+
 def _clean_cache():
     now = time.time()
     expired = [k for k, (ts, _) in _cache.items() if now - ts > CACHE_TTL]
@@ -90,10 +95,7 @@ def http_get(base_url, path, params=None, api_key=None, timeout=5, use_cache=Tru
             if time.time() - ts < CACHE_TTL:
                 return cached_data
 
-    headers = {
-        'Accept': 'application/json',
-        'User-Agent': 'WisataJogja-Integration/1.0'
-    }
+    headers = dict(DEFAULT_HEADERS)
     if api_key:
         headers['Authorization'] = f'Bearer {api_key}'
 
@@ -108,10 +110,17 @@ def http_get(base_url, path, params=None, api_key=None, timeout=5, use_cache=Tru
     except urllib.error.HTTPError as e:
         if e.code == 404:
             raise UpstreamNotFoundError("Data tidak ditemukan")
-        logger.warning(f"Upstream HTTP error {e.code} for path {clean_path}")
+        body_snippet = ""
+        try:
+            body_bytes = e.read()
+            if body_bytes:
+                body_snippet = body_bytes.decode('utf-8', errors='replace')[:200]
+        except Exception:
+            body_snippet = ""
+        logger.error(f"Upstream HTTP error {e.code} for path {clean_path}: {body_snippet}")
         raise UpstreamError("Gagal menghubungi layanan hulu")
     except Exception as e:
-        logger.warning(f"Upstream request failed for path {clean_path}: {type(e).__name__}")
+        logger.error(f"Upstream request failed for path {clean_path}: {type(e).__name__}")
         raise UpstreamError("Gagal menghubungi layanan hulu")
 
 def get_hotel_config():
@@ -251,7 +260,7 @@ def ping_service(base_url, timeout=3):
     try:
         clean_base = base_url.rstrip('/')
         url = f"{clean_base}/api/v1/health"
-        req = urllib.request.Request(url, headers={'User-Agent': 'WisataJogja-Ping/1.0'}, method='GET')
+        req = urllib.request.Request(url, headers=dict(DEFAULT_HEADERS), method='GET')
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return 200 <= resp.status < 300
     except Exception:

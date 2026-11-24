@@ -966,5 +966,136 @@ class TestPhaseHotel2Frontend(unittest.TestCase):
         self.assertIn("999999/hotels", script_content)
 
 
+class TestUserAgentAndHeaders(unittest.TestCase):
+    def test_01_hotel_recommendations_headers(self):
+        from unittest.mock import patch
+        import integrations, json
+
+        captured_requests = []
+
+        class MockResp:
+            def __init__(self, data):
+                self.data = json.dumps(data).encode('utf-8')
+            def read(self):
+                return self.data
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+
+        def fake_urlopen(req, timeout=5):
+            captured_requests.append(req)
+            return MockResp([{"hotelId": "H01", "name": "Hotel Test", "city": "Kota Yogyakarta"}])
+
+        integrations._cache.clear()
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen):
+            r = client.get('/api/v1/destinations/1/hotels')
+            self.assertEqual(r.status_code, 200)
+
+        self.assertEqual(len(captured_requests), 1)
+        req = captured_requests[0]
+        ua = req.get_header('User-agent')
+        accept = req.get_header('Accept')
+
+        self.assertNotIn('Python-urllib', ua or '')
+        self.assertEqual(ua, 'WisataJogja/1.0 (interoperabilitas; layanan Wisata)')
+        self.assertEqual(accept, 'application/json')
+
+    def test_02_hotel_detail_headers(self):
+        from unittest.mock import patch
+        import integrations, json
+
+        captured_requests = []
+
+        class MockResp:
+            def __init__(self, data):
+                self.data = json.dumps(data).encode('utf-8')
+            def read(self):
+                return self.data
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+
+        def fake_urlopen(req, timeout=5):
+            captured_requests.append(req)
+            return MockResp({"hotelId": "H01", "name": "Hotel Detail Test", "city": "Kota Yogyakarta", "rooms": []})
+
+        integrations._cache.clear()
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen):
+            r = client.get('/api/v1/integrations/hotels/H01')
+            self.assertEqual(r.status_code, 200)
+
+        self.assertEqual(len(captured_requests), 1)
+        req = captured_requests[0]
+        ua = req.get_header('User-agent')
+        accept = req.get_header('Accept')
+
+        self.assertNotIn('Python-urllib', ua or '')
+        self.assertEqual(ua, 'WisataJogja/1.0 (interoperabilitas; layanan Wisata)')
+        self.assertEqual(accept, 'application/json')
+
+    def test_03_webhook_headers(self):
+        from unittest.mock import patch
+        import webhooks
+
+        captured_requests = []
+
+        class MockResp:
+            def __init__(self):
+                self.status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+
+        def fake_urlopen(req, timeout=5):
+            captured_requests.append(req)
+            return MockResp()
+
+        os.environ['WEBHOOK_URLS'] = "http://test-webhook.local/hook"
+        os.environ['WEBHOOK_SECRET'] = "super-secret-webhook-key-12345"
+
+        with patch('urllib.request.urlopen', side_effect=fake_urlopen):
+            webhooks.emit_event('booking.created', {"code": "WJ-TEST"}, sync=True)
+
+        self.assertEqual(len(captured_requests), 1)
+        req = captured_requests[0]
+        ua = req.get_header('User-agent')
+        content_type = req.get_header('Content-type')
+
+        self.assertNotIn('Python-urllib', ua or '')
+        self.assertEqual(ua, 'WisataJogja-Webhook/1.0')
+        self.assertEqual(content_type, 'application/json')
+        self.assertTrue(req.get_header('X-wisata-signature'))
+
+    def test_04_upstream_403_logs_snippet_and_returns_502(self):
+        from unittest.mock import patch
+        import urllib.error, io, integrations
+
+        long_body = "Access Denied: Cloudflare 403 Forbidden Error Page with very long explanation text " * 10
+        class FakeHTTPError(urllib.error.HTTPError):
+            def __init__(self, code, body):
+                super().__init__('https://jogjastay-hotel-service.jogjawisata.workers.dev/api/v1/hotels', code, 'Forbidden', {}, io.BytesIO(body.encode('utf-8')))
+
+        integrations._cache.clear()
+        error_logs = []
+
+        with patch('integrations.logger.error', side_effect=lambda msg: error_logs.append(msg)), \
+             patch('urllib.request.urlopen', side_effect=FakeHTTPError(403, long_body)):
+            r = client.get('/api/v1/destinations/1/hotels')
+            self.assertEqual(r.status_code, 502)
+            self.assertEqual(r.get_json()['code'], 'UPSTREAM_ERROR')
+
+        self.assertTrue(len(error_logs) > 0)
+        log_msg = error_logs[0]
+        self.assertIn('403', log_msg)
+        self.assertIn('Access Denied', log_msg)
+        # Verify snippet is at most 200 chars (not the entire long_body)
+        self.assertLess(len(log_msg), len(long_body))
+        # Ensure no full url or secret keys are logged
+        self.assertNotIn('jogjastay-hotel-service', log_msg)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
