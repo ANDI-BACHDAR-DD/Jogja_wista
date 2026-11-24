@@ -278,3 +278,34 @@ def test_w6_hotel_modal_has_link(server, page):
     page.wait_for_selector('#modalBody a[data-handoff-hotel]', state='attached')
     href = page.get_attribute('#modalBody a[data-handoff-hotel]', 'href')
     assert href.startswith(f'{HOTEL_BASE}/?hotelId=H01&checkIn={d}')
+
+
+# ───────── Tautan keluar ke Itinerary (W6b) ─────────
+
+ITINERARY_BASE = 'https://jogjatrip-itinerary.azzahraghania110.workers.dev'
+
+
+def test_w6_itinerary_link_carries_destination_without_date(server, page):
+    _mock_hotels(page, [])
+    _open(page, server, '?destinationId=1')
+    page.wait_for_selector('#itineraryHandoffLink', state='attached')
+    href = _hrefs(page, '#itineraryHandoffLink')[0]
+    assert href == f'{ITINERARY_BASE}/?from=wisata&destinationId=1'
+    link = page.locator('#itineraryHandoffLink')
+    assert link.get_attribute('target') == '_blank'
+    assert 'noopener' in link.get_attribute('rel')
+
+
+def test_w6_itinerary_link_carries_visit_date_and_follows_calendar(server, page):
+    d = _day(3)
+    _mock_hotels(page, [])
+    _open(page, server, f'?destinationId=1&visitDate={d}')
+    page.wait_for_selector('#itineraryHandoffLink', state='attached')
+    assert _hrefs(page, '#itineraryHandoffLink') == [f'{ITINERARY_BASE}/?from=wisata&destinationId=1&visitDate={d}']
+    d2 = _day(6)
+    page.evaluate(f"selectDate('{d2}', 10000, 0, false, '')")
+    href = _hrefs(page, '#itineraryHandoffLink')[0]
+    assert href.endswith(f'visitDate={d2}')
+    for bad in ('token', 'booking', 'email', 'phone', 'price', 'total', 'name='):
+        assert bad not in href.lower(), (bad, href)
+    assert not page.errors

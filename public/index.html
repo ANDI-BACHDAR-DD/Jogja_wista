@@ -2711,6 +2711,7 @@
                 const d = await api(`/destinations/${id}`);
                 _detail.dest = d; _detail.step = 1; _detail.selectedDate = null; _detail.qty = 1; _detail.cal = [];
                 renderDetailPage();
+                refreshHandoffLinks();
                 loadHotelRecommendations(d.id, d.region);
                 // Load calendar (bulan dari tautan bila ada tanggal usulan)
                 const start = inb && inb.date ? new Date(inb.date + 'T00:00') : new Date();
@@ -2743,8 +2744,10 @@
             <p class="detail-desc">${esc(d.description)}</p>
             <div id="hotelRecommendations"></div>
             <section class="trans-handoff" id="transHandoff" aria-label="Kendaraan untuk perjalananmu">
-              <h3>Butuh kendaraan?</h3>
-              <p>Tanggal kunjungan yang kamu pilih akan dibawa ke JogjaTrans. Pemesanan kendaraan dilakukan di JogjaTrans, bukan di sini.</p>
+              <h3>Lanjutkan perjalananmu</h3>
+              <p>Susun destinasi ini bersama hotel dan kendaraan di JogjaTrip. Destinasi dan tanggal kunjungan yang kamu pilih ikut terbawa; pemesanan dilakukan di sana, bukan di sini.</p>
+              <a class="btn btn-primary btn-sm" id="itineraryHandoffLink" target="_blank" rel="noopener noreferrer" hidden>Tambahkan ke Itinerary JogjaTrip ↗</a>
+              <p class="trans-handoff-hint">Butuh kendaraan? Tanggal kunjungan juga bisa dibawa ke JogjaTrans.</p>
               <a class="btn btn-outline btn-sm" id="transHandoffLink" target="_blank" rel="noopener noreferrer" hidden>Cari kendaraan di JogjaTrans ↗</a>
               <p class="trans-handoff-hint" id="transHandoffHint">Pilih tanggal kunjungan pada kalender untuk mengaktifkan tautan.</p>
             </section>
@@ -2766,7 +2769,9 @@
            id hotel, tanggal, wilayah. Tanpa nama, kontak, kode booking, token, atau harga. */
         const PARTNER_APPS = {
             hotel: 'https://jogjastay-hotel-service.jogjawisata.workers.dev',
-            trans: 'https://jogjatrans-service.jogjawisata.workers.dev'
+            trans: 'https://jogjatrans-service.jogjawisata.workers.dev',
+            // URL Itinerary tercatat di dokumentasi tim; ganti bila dideploy ulang di akun lain.
+            itinerary: 'https://jogjatrip-itinerary.azzahraghania110.workers.dev'
         };
         const CRS_REGION_LABELS = {
             'kota-yogyakarta': 'Kota Yogyakarta',
@@ -2790,6 +2795,14 @@
             if (CRS_REGION_LABELS[regionSlug]) q.set('region', CRS_REGION_LABELS[regionSlug]);
             return PARTNER_APPS.hotel + '/?' + q;
         }
+        function itineraryHandoffUrl() {
+            const id = _detail.dest && _detail.dest.id;
+            if (!/^[1-9]\d{0,14}$/.test(String(id || ''))) return '';
+            const q = new URLSearchParams({ from: 'wisata', destinationId: String(id) });
+            const visit = chosenVisitDate();
+            if (visit) q.set('visitDate', visit);
+            return PARTNER_APPS.itinerary + '/?' + q;
+        }
         function transHandoffUrl() {
             const visit = chosenVisitDate();
             if (!visit) return '';
@@ -2800,6 +2813,11 @@
                 const u = hotelHandoffUrl(a.dataset.handoffHotel, a.dataset.region);
                 if (u) { a.href = u; a.hidden = false; } else { a.removeAttribute('href'); a.hidden = true; }
             });
+            const it = document.getElementById('itineraryHandoffLink');
+            if (it) {
+                const u = itineraryHandoffUrl();
+                if (u) { it.href = u; it.hidden = false; } else { it.removeAttribute('href'); it.hidden = true; }
+            }
             const link = document.getElementById('transHandoffLink');
             const hint = document.getElementById('transHandoffHint');
             if (link) {
