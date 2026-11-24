@@ -2039,6 +2039,26 @@
             margin-top: 0.5rem;
         }
 
+        a[hidden], .btn[hidden] { display: none !important; }
+
+        .hotel-btn-book {
+            width: 100%;
+            text-align: center;
+            font-size: 0.825rem;
+            padding: 0.5rem;
+            margin-top: 0.4rem;
+        }
+
+        .trans-handoff {
+            margin-top: 1.5rem;
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--border, #e5e7eb);
+            border-radius: var(--r-md, 12px);
+        }
+
+        .trans-handoff h3 { font-size: 1rem; margin-bottom: 0.35rem; }
+        .trans-handoff p { font-size: 0.875rem; color: var(--text-3, #6b7280); margin-bottom: 0.6rem; }
+
         .hotel-btn-detail {
             width: 100%;
             text-align: center;
@@ -2722,6 +2742,12 @@
             <div class="detail-price">${esc(d.price_label)}</div>
             <p class="detail-desc">${esc(d.description)}</p>
             <div id="hotelRecommendations"></div>
+            <section class="trans-handoff" id="transHandoff" aria-label="Kendaraan untuk perjalananmu">
+              <h3>Butuh kendaraan?</h3>
+              <p>Tanggal kunjungan yang kamu pilih akan dibawa ke JogjaTrans. Pemesanan kendaraan dilakukan di JogjaTrans, bukan di sini.</p>
+              <a class="btn btn-outline btn-sm" id="transHandoffLink" target="_blank" rel="noopener noreferrer" hidden>Cari kendaraan di JogjaTrans ↗</a>
+              <p class="trans-handoff-hint" id="transHandoffHint">Pilih tanggal kunjungan pada kalender untuk mengaktifkan tautan.</p>
+            </section>
           </div>
           <aside>
             <div class="booking-panel" id="bookingPanel">
@@ -2736,6 +2762,53 @@
         /* ═══════════════════════════════════════════════════════════
            REKOMENDASI HOTEL & DETAIL MODAL (JOGJASTAY)
         ═══════════════════════════════════════════════════════════ */
+        /* Tautan keluar ke penyedia lain (kontrak partner-native). Hanya konteks publik:
+           id hotel, tanggal, wilayah. Tanpa nama, kontak, kode booking, token, atau harga. */
+        const PARTNER_APPS = {
+            hotel: 'https://jogjastay-hotel-service.jogjawisata.workers.dev',
+            trans: 'https://jogjatrans-service.jogjawisata.workers.dev'
+        };
+        const CRS_REGION_LABELS = {
+            'kota-yogyakarta': 'Kota Yogyakarta',
+            'kabupaten-sleman': 'Sleman',
+            'kabupaten-bantul': 'Bantul',
+            'kabupaten-gunungkidul': 'Gunungkidul',
+            'kabupaten-kulon-progo': 'Kulon Progo',
+        };
+        function addDaysISO(day, n) {
+            const [y, m, d] = day.split('-').map(Number);
+            return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+        }
+        function chosenVisitDate() {
+            return validInboundDate(_detail.selectedDate && _detail.selectedDate.date);
+        }
+        function hotelHandoffUrl(hotelId, regionSlug) {
+            if (!/^[A-Za-z0-9_-]{1,60}$/.test(String(hotelId || ''))) return '';
+            const q = new URLSearchParams({ hotelId: String(hotelId) });
+            const visit = chosenVisitDate();
+            if (visit) { q.set('checkIn', visit); q.set('checkOut', addDaysISO(visit, 1)); }
+            if (CRS_REGION_LABELS[regionSlug]) q.set('region', CRS_REGION_LABELS[regionSlug]);
+            return PARTNER_APPS.hotel + '/?' + q;
+        }
+        function transHandoffUrl() {
+            const visit = chosenVisitDate();
+            if (!visit) return '';
+            return PARTNER_APPS.trans + '/mobil?' + new URLSearchParams({ startDate: visit, endDate: visit });
+        }
+        function refreshHandoffLinks() {
+            document.querySelectorAll('a[data-handoff-hotel]').forEach(a => {
+                const u = hotelHandoffUrl(a.dataset.handoffHotel, a.dataset.region);
+                if (u) { a.href = u; a.hidden = false; } else { a.removeAttribute('href'); a.hidden = true; }
+            });
+            const link = document.getElementById('transHandoffLink');
+            const hint = document.getElementById('transHandoffHint');
+            if (link) {
+                const u = transHandoffUrl();
+                if (u) { link.href = u; link.hidden = false; } else { link.removeAttribute('href'); link.hidden = true; }
+                if (hint) hint.hidden = !!u;
+            }
+        }
+
         const REGION_FULL_NAMES = {
             'kota-yogyakarta': 'Kota Yogyakarta',
             'kabupaten-sleman': 'Kabupaten Sleman',
@@ -2823,6 +2896,7 @@
                                 ${hasPrice ? `<div class="hotel-price">Mulai ${fmt(h.price_from)} / malam</div>` : ''}
                                 <div class="hotel-actions">
                                     <button class="btn btn-primary btn-sm hotel-btn-detail" onclick="openHotelDetailModal('${esc(h.id)}')">Lihat Detail Hotel</button>
+                                    <a class="btn btn-outline btn-sm hotel-btn-book" data-handoff-hotel="${esc(h.id)}" data-region="${esc(region)}" target="_blank" rel="noopener noreferrer" hidden>Pesan di JogjaStay ↗</a>
                                 </div>
                             </div>
                         </article>
@@ -2843,6 +2917,7 @@
                         </div>
                     </section>
                 `;
+                refreshHandoffLinks();
             } catch (err) {
                 if (err.status === 503) {
                     container.innerHTML = `
@@ -2938,12 +3013,14 @@
                         ${roomsHtml}
                         <div class="hotel-modal-footer-note">
                             <span>Data dari JogjaStay</span>
+                            <a class="btn btn-primary btn-sm" data-handoff-hotel="${esc(h.id || hotelId)}" data-region="${esc(_detail.dest && _detail.dest.region || '')}" target="_blank" rel="noopener noreferrer" hidden>Pesan kamar di JogjaStay ↗</a>
                             <button class="btn btn-ghost btn-sm" onclick="closeModal()">Tutup</button>
                         </div>
                     </div>
                 `;
 
                 openModal(h.name, bodyHtml);
+                refreshHandoffLinks();
             } catch (err) {
                 document.getElementById('modalTitle').textContent = 'Detail Hotel';
                 document.getElementById('modalBody').innerHTML = `
@@ -3130,6 +3207,7 @@
             if (btn) btn.disabled = false;
             const hint = document.getElementById('hintPilihTanggal');
             if (hint) hint.style.display = 'none';
+            refreshHandoffLinks();
         };
 
         function updatePriceDisplay() {

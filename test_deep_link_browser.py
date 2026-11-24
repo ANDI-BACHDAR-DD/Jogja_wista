@@ -193,3 +193,88 @@ def test_10_inbound_not_carried_to_other_destination(server, page):
     page.wait_for_timeout(1200)
     assert page.evaluate('_detail.dest.id') == 2
     assert _selected(page) is None
+
+
+# ───────── Tautan keluar ke JogjaStay dan JogjaTrans (W6) ─────────
+
+HOTEL_BASE = 'https://jogjastay-hotel-service.jogjawisata.workers.dev'
+TRANS_BASE = 'https://jogjatrans-service.jogjawisata.workers.dev'
+
+
+def _mock_hotels(page, hotels):
+    """Tiru API hotel Wisata sehingga tes tidak memanggil JogjaStay produksi."""
+    def hotels_route(route):
+        route.fulfill(status=200, content_type='application/json', body=json.dumps({'hotels': hotels}))
+
+    def detail_route(route):
+        hid = route.request.url.rsplit('/', 1)[-1].split('?')[0]
+        route.fulfill(status=200, content_type='application/json', body=json.dumps(
+            {'id': hid, 'name': 'Hotel Uji ' + hid, 'region': 'kabupaten-sleman', 'rooms': []}))
+    page.route('**/api/v1/destinations/*/hotels', hotels_route)
+    page.route('**/api/v1/integrations/hotels/*', detail_route)
+
+
+def _hrefs(page, selector):
+    return page.eval_on_selector_all(selector, 'els => els.map(e => e.hidden ? null : e.getAttribute("href"))')
+
+
+def test_w6_links_without_date_hotel_only_trans_hidden(server, page):
+    _mock_hotels(page, [{'id': 'H01', 'name': 'Hotel Satu', 'region': 'kabupaten-sleman'}])
+    _open(page, server, '?destinationId=1')
+    page.wait_for_selector('a[data-handoff-hotel]', state='attached')
+    hotel = _hrefs(page, 'a[data-handoff-hotel]')
+    # Wilayah mengikuti destinasi yang dibuka (destinasi 1 = Kota Yogyakarta); tidak ada tanggal, jadi tanpa checkIn/checkOut
+    assert hotel == [f'{HOTEL_BASE}/?hotelId=H01&region=Kota+Yogyakarta']
+    assert _hrefs(page, '#transHandoffLink') == [None]  # tanpa tanggal, tombol Trans tidak aktif
+    assert page.is_visible('#transHandoffHint')
+
+
+def test_w6_links_follow_selected_date(server, page):
+    d = _day(3)
+    nxt = (datetime.date.today() + datetime.timedelta(days=4)).isoformat()
+    _mock_hotels(page, [{'id': 'H01', 'name': 'Hotel Satu', 'region': 'kabupaten-sleman'}])
+    _open(page, server, f'?destinationId=1&visitDate={d}')
+    page.wait_for_selector('a[data-handoff-hotel]', state='attached')
+    hotel = _hrefs(page, 'a[data-handoff-hotel]')[0]
+    assert hotel.startswith(f'{HOTEL_BASE}/?hotelId=H01&checkIn={d}&checkOut={nxt}')
+    assert _hrefs(page, '#transHandoffLink') == [f'{TRANS_BASE}/mobil?startDate={d}&endDate={d}']
+    link = page.locator('#transHandoffLink')
+    assert link.get_attribute('target') == '_blank'
+    assert 'noopener' in link.get_attribute('rel') and 'noreferrer' in link.get_attribute('rel')
+    assert not page.is_visible('#transHandoffHint')
+    assert not page.errors
+
+
+def test_w6_hotel_link_updates_when_date_changes_and_has_no_private_data(server, page):
+    _mock_hotels(page, [{'id': 'H01', 'name': 'Hotel Satu', 'region': 'kabupaten-sleman'}])
+    _open(page, server, '?destinationId=1')
+    page.wait_for_selector('a[data-handoff-hotel]', state='attached')
+    d = _day(5)
+    page.evaluate(f"selectDate('{d}', 10000, 0, false, '')")
+    hotel = _hrefs(page, 'a[data-handoff-hotel]')[0]
+    trans = _hrefs(page, '#transHandoffLink')[0]
+    assert f'checkIn={d}' in hotel and f'startDate={d}' in trans
+    for url in (hotel, trans):
+        for bad in ('token', 'booking', 'email', 'phone', 'name=', 'price', 'total'):
+            assert bad not in url.lower(), (bad, url)
+
+
+def test_w6_invalid_hotel_id_gets_no_link(server, page):
+    _mock_hotels(page, [{'id': 'H 01<x>', 'name': 'Salah', 'region': 'kabupaten-sleman'},
+                        {'id': 'H02', 'name': 'Benar', 'region': 'kabupaten-bantul'}])
+    _open(page, server, '?destinationId=1')
+    page.wait_for_selector('a[data-handoff-hotel]', state='attached')
+    links = _hrefs(page, 'a[data-handoff-hotel]')
+    assert links[0] is None
+    assert links[1].startswith(f'{HOTEL_BASE}/?hotelId=H02')
+
+
+def test_w6_hotel_modal_has_link(server, page):
+    d = _day(3)
+    _mock_hotels(page, [{'id': 'H01', 'name': 'Hotel Satu', 'region': 'kabupaten-sleman'}])
+    _open(page, server, f'?destinationId=1&visitDate={d}')
+    page.wait_for_selector('.hotel-btn-detail')
+    page.click('.hotel-btn-detail')
+    page.wait_for_selector('#modalBody a[data-handoff-hotel]', state='attached')
+    href = page.get_attribute('#modalBody a[data-handoff-hotel]', 'href')
+    assert href.startswith(f'{HOTEL_BASE}/?hotelId=H01&checkIn={d}')
