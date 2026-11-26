@@ -52,21 +52,36 @@ def attach(api_bp, deps):
         return key if len(key) >= 32 else None
 
     def durable():
-        # Honest by default: SQLite on a serverless /tmp is lost on restart. Operators who mount a
-        # persistent volume (or move to a persistent database) declare it explicitly.
-        flag = os.getenv('INTEROP_DURABLE_STORAGE', '').strip().lower()
-        if flag in ('true', '1', 'yes'):
-            return True
-        if flag in ('false', '0', 'no'):
+        """
+        Fail-closed durable storage evaluation for Contract 0.2.
+        Must return False if storage is ephemeral (/tmp, :memory:, Vercel serverless without remote DB).
+        """
+        import db_turso
+        # 1. If Turso/libSQL is configured, evaluate live probe
+        if db_turso.is_turso_configured():
+            return db_turso.is_durable()
+
+        # 2. Check path ephemerality
+        raw_path = deps['db_path']() if 'db_path' in deps else ''
+        if not raw_path or raw_path.startswith('/tmp') or raw_path == ':memory:':
             return False
-        raw_path = deps['db_path']()
-        if raw_path.startswith('/tmp'):
-            return False
+
         real_p = os.path.realpath(raw_path)
         tmp_dir = os.path.realpath(tempfile.gettempdir())
         if real_p.startswith('/tmp') or real_p.startswith('/private/tmp') or real_p.startswith(tmp_dir):
+            # Ephemeral temp directory -> FAIL-CLOSED, even if operator flag is set
             return False
-        return True
+
+        # Vercel serverless execution without remote database has no persistent disk
+        if bool(os.environ.get('VERCEL')):
+            return False
+
+        # 3. For non-temp SQLite path on verified persistent host: check operator flag
+        flag = os.getenv('INTEROP_DURABLE_STORAGE', '').strip().lower()
+        if flag in ('true', '1', 'yes'):
+            return True
+
+        return False
 
     def auth():
         """Return (partner, None) or (None, error response). Same partner keys as /partner/*."""
