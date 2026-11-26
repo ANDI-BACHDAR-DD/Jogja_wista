@@ -9,4 +9,20 @@ Routes (also under `/api/interop` because the blueprint is mounted twice): `GET 
 
 Environment: `INTEROP_OFFER_SIGNING_KEY` (>= 32 chars, required; capabilities returns 503 without it), `INTEROP_DURABLE_STORAGE` (`true` only when `DB_PATH` is on persistent storage).
 
-**Known limit (W2):** on Vercel the database is SQLite in `/tmp`, so `capabilities.durableStorage` is `false` and consumers that require durable holds will not enable booking. Move `DB_PATH` to persistent storage (or a hosted database) and set `INTEROP_DURABLE_STORAGE=true` to turn this on.
+## W2 — Durable Storage (syarat untuk transaksi live)
+
+`capabilities.durableStorage` jujur secara default:
+- `false` bila `DB_PATH` mengarah ke `/tmp` atau direktori temp OS (kasus Vercel gratis).
+- `true` bila operator menyetel `INTEROP_DURABLE_STORAGE=true` **DAN** sudah memindahkan `DB_PATH` ke penyimpanan persisten.
+
+> **Peringatan:** `INTEROP_DURABLE_STORAGE=true` hanya boleh disetel setelah database benar-benar persisten.
+> Menyetelnya tanpa memindahkan DB adalah klaim palsu — klien seperti JogjaTrip akan
+> mengaktifkan hold yang bisa hilang saat instans Vercel restart.
+
+**Langkah W2 untuk operator:**
+1. Siapkan database persisten: Turso (SQLite over HTTP), PlanetScale, Vercel Postgres, atau mount volume.
+2. Set `DB_PATH` di env Vercel ke koneksi string atau path penyimpanan tetap.
+3. Verifikasi hold bertahan setelah cold start sebelum menyetel `INTEROP_DURABLE_STORAGE=true`.
+4. Jalankan `tools/interop-contract-check.mjs --confirm` pada staging untuk mendapat bukti 26/26 PASS.
+
+**Known limit:** Tanpa W2 selesai, `durableStorage: false` dan konsumen (JogjaTrip) tidak akan mengaktifkan booking melalui Contract 0.2.

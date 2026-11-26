@@ -18,7 +18,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt pytest
-      - run: python -m pytest test_api.py test_interop.py -q
+      - run: python -m pytest test_api.py test_interop.py test_interop_0_2.py -q
+        env:
+          PARTNER_KEYS: "hotel:hotel-ci-key-0123456789abcdef,transport:transport-ci-key-0123456789"
+          INTEROP_OFFER_SIGNING_KEY: "ci-signing-key-for-github-actions-lokal-only"
+          SECRET_KEY: "ci-secret-key"
 
   deep-link-browser:
     runs-on: ubuntu-latest
