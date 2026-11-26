@@ -73,6 +73,17 @@ class Wisata02(unittest.TestCase):
         try: return c.execute('SELECT * FROM bookings WHERE code=?', (hid,)).fetchone()
         finally: c.close()
 
+    def test_offer_fields_the_itinerary_client_requires(self):
+        """Contract 0.2: description, imageUrl (absolute https or null), regionId, attributes, generatedAt."""
+        data = offers().get_json()
+        self.assertIn('generatedAt', data)
+        self.assertTrue(data['offers'])
+        for o in data['offers']:
+            for k in ('regionId', 'description', 'imageUrl', 'attributes'):
+                self.assertIn(k, o)
+            self.assertIsInstance(o['description'], str)
+            self.assertTrue(o['imageUrl'] is None or o['imageUrl'].startswith('https://'), o['imageUrl'])
+
     def test_01_auth_and_capabilities(self):
         self.assertEqual(C.get(P + '/capabilities').status_code, 401)
         self.assertEqual(C.get(P + '/capabilities', headers={'Authorization': 'Bearer nope'}).status_code, 401)
@@ -244,3 +255,5 @@ class Wisata02(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+

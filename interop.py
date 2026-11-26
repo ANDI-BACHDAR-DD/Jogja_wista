@@ -129,6 +129,17 @@ def attach(api_bp, deps):
         row = db().execute('SELECT slug FROM regions WHERE slug=?', (slug,)).fetchone()
         return row['slug'] if row else None
 
+    def image_url(photo):
+        """Contract 0.2: imageUrl is an absolute https URL or null. Photos are stored as site paths or full URLs."""
+        if not isinstance(photo, str) or not photo.strip():
+            return None
+        photo = photo.strip()
+        if photo.startswith('https://'):
+            return photo
+        if photo.startswith('/') and not photo.startswith('//') and request.host:
+            return 'https://' + request.host + photo
+        return None
+
     def lapse_holds():
         """Expire lapsed holds and erase customer data from holds that did not become reservations."""
         expire_stale()
@@ -224,7 +235,7 @@ def attach(api_bp, deps):
                 'offerId': make_offer_id(partner, d['id'], day, qty, unit, expiry_ms), 'expiresAt': expires_at,
                 'provider': 'wisata', 'entityType': 'tourist_attraction', 'resourceId': str(d['id']),
                 'regionId': REGION_PREFIX + d['region'], 'name': d['name'], 'description': d['description'] or '',
-                'imageUrl': photos[0] if photos else None, 'price': unit, 'priceUnit': 'ticket', 'currency': 'IDR',
+                'imageUrl': image_url(photos[0]) if photos else None, 'price': unit, 'priceUnit': 'ticket', 'currency': 'IDR',
                 'priceType': 'SIMULATED', 'simulation': True, 'period': {'startDate': day, 'endDate': day},
                 'quantity': qty, 'totalPrice': unit * qty, 'available': True, 'remaining': remaining,
                 'location': {'lat': None, 'lng': None}, 'attributes': {'tier': 'base'},
