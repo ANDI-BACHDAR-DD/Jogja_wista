@@ -149,6 +149,8 @@ class TestPhase2Partner(unittest.TestCase):
         c.execute("DELETE FROM bookings WHERE source != 'web'")
         c.commit()
         c.close()
+        for k in ['WEBHOOK_URLS', 'WEBHOOK_SECRET', 'WEBHOOK_SYNC', 'WEBHOOK_INCLUDE_PII']:
+            os.environ.pop(k, None)
 
     def _future_date(self, days=60):
         from datetime import date, timedelta
@@ -259,6 +261,21 @@ class TestPhase2Partner(unittest.TestCase):
             })
             self.assertEqual(r_idem.status_code, 200)
             self.assertEqual(r_idem.get_json()['code'], b['code'])
+
+            # Resend with same Idempotency-Key but different payload -> 409 IDEMPOTENCY_CONFLICT
+            diff_payload = dict(payload, qty=3)
+            r_diff = client.post('/api/v1/partner/bookings', json=diff_payload, headers={
+                'Authorization': f'Bearer {self.HOTEL_KEY}',
+                'Idempotency-Key': idem_key
+            })
+            self.assertEqual(r_diff.status_code, 409)
+
+            # Non-numeric qty -> 400 (bukan 500)
+            bad_qty_payload = dict(payload, qty='bukan_angka', external_ref=f"REF-{uuid.uuid4().hex[:6]}")
+            r_bad_qty = client.post('/api/v1/partner/bookings', json=bad_qty_payload, headers={
+                'Authorization': f'Bearer {self.HOTEL_KEY}'
+            })
+            self.assertEqual(r_bad_qty.status_code, 400)
 
             # 3. Duplicate external_ref with DIFFERENT idempotency key -> 409
             r_dup = client.post('/api/v1/partner/bookings', json=payload, headers={
@@ -450,6 +467,8 @@ class TestPhase4Webhooks(unittest.TestCase):
         c.execute("DELETE FROM bookings WHERE source != 'web'")
         c.commit()
         c.close()
+        for k in ['WEBHOOK_URLS', 'WEBHOOK_SECRET', 'WEBHOOK_SYNC', 'WEBHOOK_INCLUDE_PII']:
+            os.environ.pop(k, None)
 
     def _future_date(self, days=80):
         from datetime import date, timedelta
@@ -1056,8 +1075,12 @@ class TestUserAgentAndHeaders(unittest.TestCase):
         os.environ['WEBHOOK_URLS'] = "http://test-webhook.local/hook"
         os.environ['WEBHOOK_SECRET'] = "super-secret-webhook-key-12345"
 
-        with patch('urllib.request.urlopen', side_effect=fake_urlopen):
-            webhooks.emit_event('booking.created', {"code": "WJ-TEST"}, sync=True)
+        try:
+            with patch('urllib.request.urlopen', side_effect=fake_urlopen):
+                webhooks.emit_event('booking.created', {"code": "WJ-TEST"}, sync=True)
+        finally:
+            os.environ.pop('WEBHOOK_URLS', None)
+            os.environ.pop('WEBHOOK_SECRET', None)
 
         self.assertEqual(len(captured_requests), 1)
         req = captured_requests[0]

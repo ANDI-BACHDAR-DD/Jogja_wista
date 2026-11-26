@@ -1,5 +1,5 @@
 """Wisata Jogja - Backend REST API (Flask + SQLite). Jalankan: python app.py"""
-import hmac, json, os, random, re, sqlite3, string, time, uuid
+import hashlib, hmac, json, os, random, re, sqlite3, string, time, uuid
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 import webhooks
@@ -106,6 +106,10 @@ def init():
         c.execute("ALTER TABLE bookings ADD COLUMN external_ref TEXT")
     if 'idempotency_key' not in cols:
         c.execute("ALTER TABLE bookings ADD COLUMN idempotency_key TEXT")
+    if 'request_fingerprint' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN request_fingerprint TEXT")
+    if 'offer_id' not in cols:
+        c.execute("ALTER TABLE bookings ADD COLUMN offer_id TEXT")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_source_external_ref ON bookings(source, external_ref) WHERE external_ref IS NOT NULL")
     c.execute("CREATE INDEX IF NOT EXISTS idx_bookings_idempotency ON bookings(source, idempotency_key) WHERE idempotency_key IS NOT NULL")
     c.commit()
@@ -869,14 +873,29 @@ def partner_create_booking():
     p, err_resp = require_partner()
     if err_resp: return err_resp
     
+    b = request.get_json(silent=True) or {}
+    fingerprint = hashlib.sha256(json.dumps(b, sort_keys=True, separators=(',', ':')).encode()).hexdigest() if b else None
+
     idem_key = request.headers.get('Idempotency-Key', '').strip()
     if idem_key:
         row = db().execute('SELECT * FROM bookings WHERE source=? AND idempotency_key=?', (p, idem_key)).fetchone()
         if row:
+            if row['request_fingerprint']:
+                if row['request_fingerprint'] != fingerprint:
+                    return err('Idempotency-Key digunakan dengan isi permintaan berbeda', 409, 'IDEMPOTENCY_CONFLICT')
+            else:
+                if (row['external_ref'] != (b.get('external_ref') or '').strip() or
+                    row['destination_id'] != b.get('destination_id') or
+                    row['qty'] != b.get('qty') or
+                    row['visit_date'] != b.get('visit_date')):
+                    return err('Idempotency-Key digunakan dengan isi permintaan berbeda', 409, 'IDEMPOTENCY_CONFLICT')
             return jsonify(partner_booking(row)), 200
 
-    b = request.get_json(force=True) or {}
     dest_id = b.get('destination_id')
+    try:
+        dest_id = int(dest_id)
+    except (ValueError, TypeError):
+        return err('Wisata tidak ditemukan', 404)
     d = db().execute('SELECT * FROM destinations WHERE id=?', (dest_id,)).fetchone()
     if not d:
         return err('Wisata tidak ditemukan', 404)
@@ -885,8 +904,11 @@ def partner_create_booking():
     if e:
         return err(e, 400)
         
+    qty_raw = b.get('qty')
+    if qty_raw is None or isinstance(qty_raw, bool):
+        return err('Jumlah tiket harus berupa angka 1-20', 400)
     try:
-        qty = int(b.get('qty', 0) or 0)
+        qty = int(qty_raw)
         if not 1 <= qty <= 20:
             return err('Jumlah tiket 1-20', 400)
     except (ValueError, TypeError):
@@ -920,12 +942,12 @@ def partner_create_booking():
         code, destination_id, visit_date, qty, tier, unit_price, total,
         name, email, phone, status, refund_amount, refund_reason,
         created_at, updated_at, user_id, expires_at, paid_at,
-        payment_method, source, external_ref, idempotency_key
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+        payment_method, source, external_ref, idempotency_key, request_fingerprint
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
         code, d['id'], visit.isoformat(), qty, tier, up, total,
         name, email, phone, 'PAID', 0, None,
         now, now, None, None, now,
-        'partner', p, ext_ref, idem_key or None
+        'partner', p, ext_ref, idem_key or None, fingerprint
     ))
     db().commit()
     
@@ -1227,6 +1249,12 @@ CORS(app, resources={r"/api/*": {
     "expose_headers": ["X-Request-Id", "X-Total-Count"],
     "methods": ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"]
 }})
+
+# Contract 0.2 provider routes (/api/v1/interop/*): see interop.py and docs/INTEROP_0.2.md.
+import interop
+interop.attach(api_bp, dict(db=db, current_partner=current_partner, check_partner_rate_limit=check_partner_rate_limit,
+    unit_price=unit_price, sold=sold, expire_stale=expire_stale, now_iso=now_iso, new_code=new_code,
+    parse_visit=parse_visit, db_path=lambda: DB))
 
 app.register_blueprint(api_bp, url_prefix='/api')
 app.register_blueprint(api_bp, url_prefix='/api/v1', name='api_v1')

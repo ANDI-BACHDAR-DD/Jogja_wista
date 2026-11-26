@@ -21,7 +21,8 @@ def get_openapi_spec():
             {"name": "Partner", "description": "Integrasi service-to-service antar layanan (Hotel, Transport, Itinerary)"},
             {"name": "Admin", "description": "Pengelolaan destinasi dan monitoring oleh admin"},
             {"name": "Meta", "description": "Informasi kesehatan layanan dan spesifikasi OpenAPI"},
-            {"name": "Integrations", "description": "Klien interoperabilitas ke Hotel & Transport"}
+            {"name": "Integrations", "description": "Klien interoperabilitas ke Hotel & Transport"},
+            {"name": "Interop", "description": "Contract 0.2 provider routes (capabilities, offers, holds)"}
         ],
         "components": {
             "securitySchemes": {
@@ -752,6 +753,91 @@ def get_openapi_spec():
                                 }
                             }
                         }
+                    }
+                }
+            },
+            "/api/v1/interop/capabilities": {
+                "get": {
+                    "tags": ["Interop"],
+                    "summary": "Contract 0.2 capabilities",
+                    "security": [{"partnerKey": []}],
+                    "responses": {
+                        "200": {"description": "Capabilities penyedia wisata", "content": {"application/json": {"schema": {"type": "object"}}}},
+                        "401": {"description": "Token partner tidak valid"}
+                    }
+                }
+            },
+            "/api/v1/interop/offers": {
+                "get": {
+                    "tags": ["Interop"],
+                    "summary": "Cari penawaran bertanda tangan HMAC (Contract 0.2)",
+                    "security": [{"partnerKey": []}],
+                    "parameters": [
+                        {"name": "startDate", "in": "query", "required": True, "schema": {"type": "string", "format": "date"}},
+                        {"name": "regionId", "in": "query", "required": False, "schema": {"type": "string"}},
+                        {"name": "quantity", "in": "query", "required": False, "schema": {"type": "integer", "default": 1}},
+                        {"name": "limit", "in": "query", "required": False, "schema": {"type": "integer", "default": 50}}
+                    ],
+                    "responses": {
+                        "200": {"description": "Daftar penawaran tiket", "content": {"application/json": {"schema": {"type": "object"}}}},
+                        "400": {"description": "Parameter pencarian tidak valid"}
+                    }
+                }
+            },
+            "/api/v1/interop/holds": {
+                "post": {
+                    "tags": ["Interop"],
+                    "summary": "Buat hold tiket sementara (15 menit) berdasarkan penawaran",
+                    "security": [{"partnerKey": []}],
+                    "parameters": [{"name": "Idempotency-Key", "in": "header", "required": True, "schema": {"type": "string"}}],
+                    "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object"}}}},
+                    "responses": {
+                        "201": {"description": "Hold berhasil dibuat"},
+                        "200": {"description": "Hold idempotency replay"},
+                        "409": {"description": "Konflik idempotency atau kuota habis"},
+                        "422": {"description": "Offer tidak valid atau kedaluwarsa"}
+                    }
+                }
+            },
+            "/api/v1/interop/holds/{hold_id}": {
+                "get": {
+                    "tags": ["Interop"],
+                    "summary": "Baca status hold tiket",
+                    "security": [{"partnerKey": []}],
+                    "parameters": [{"name": "hold_id", "in": "path", "required": True, "schema": {"type": "string"}}],
+                    "responses": {
+                        "200": {"description": "Detail status hold"},
+                        "404": {"description": "Hold tidak ditemukan"}
+                    }
+                }
+            },
+            "/api/v1/interop/holds/{hold_id}/confirm": {
+                "post": {
+                    "tags": ["Interop"],
+                    "summary": "Konfirmasi hold menjadi reservasi tiket lunas (simulasi bayar)",
+                    "security": [{"partnerKey": []}],
+                    "parameters": [
+                        {"name": "hold_id", "in": "path", "required": True, "schema": {"type": "string"}},
+                        {"name": "Idempotency-Key", "in": "header", "required": True, "schema": {"type": "string"}}
+                    ],
+                    "responses": {
+                        "200": {"description": "Reservasi terkonfirmasi dan tiket diterbitkan"},
+                        "409": {"description": "Hold kedaluwarsa atau telah dibatalkan"}
+                    }
+                }
+            },
+            "/api/v1/interop/holds/{hold_id}/release": {
+                "post": {
+                    "tags": ["Interop"],
+                    "summary": "Batalkan hold dan kembalikan kuota",
+                    "security": [{"partnerKey": []}],
+                    "parameters": [
+                        {"name": "hold_id", "in": "path", "required": True, "schema": {"type": "string"}},
+                        {"name": "Idempotency-Key", "in": "header", "required": True, "schema": {"type": "string"}}
+                    ],
+                    "responses": {
+                        "200": {"description": "Hold berhasil dibatalkan"},
+                        "409": {"description": "Hold yang sudah confirm tidak dapat dilepas"}
                     }
                 }
             }
