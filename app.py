@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 import webhooks
 import integrations
+import db_turso
 
 from flask import Flask, Blueprint, Response, g, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -72,8 +73,7 @@ CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT
 
 def db():
     if 'db' not in g:
-        g.db = sqlite3.connect(DB)
-        g.db.row_factory = sqlite3.Row
+        g.db = db_turso.connect(DB)
     return g.db
 
 @app.teardown_appcontext
@@ -81,7 +81,7 @@ def close(_):
     if 'db' in g: g.db.close()
 
 def init():
-    c = sqlite3.connect(DB)
+    c = db_turso.connect(DB)
     c.executescript(SCHEMA)
     # Upgrade database lama: tambah kolom via ALTER TABLE (dicek dengan PRAGMA)
     cols = [row[1] for row in c.execute("PRAGMA table_info(bookings)").fetchall()]
@@ -199,8 +199,13 @@ def handle_cors_and_request_id(response):
 
 def admin_only():
     """Menerima header X-Admin-Token ATAU token user dengan role admin."""
-    if request.headers.get('X-Admin-Token') == ADMIN_TOKEN:
-        return True
+    token = request.headers.get('X-Admin-Token')
+    if token:
+        if (IS_VERCEL or os.getenv('FLASK_ENV') == 'production') and token in ('admin123', 'admin', 'password'):
+            app.logger.warning("Kredensial X-Admin-Token default ditolak pada lingkungan produksi.")
+            return False
+        if token == ADMIN_TOKEN:
+            return True
     u = current_user()
     return u and u['role'] == 'admin'
 
