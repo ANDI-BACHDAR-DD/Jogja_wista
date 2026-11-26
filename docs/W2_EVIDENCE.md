@@ -97,7 +97,7 @@ Dokumen ini memuat bukti arsitektur, implementasi fail-closed durability, audit 
 ## 1. Baseline dan perubahan
 - Baseline SHA: 0eb6ffab103fa5a53ddb7eb7d2f6d4e1481d82e1
 - Branch / PR: feat/w2-turso-persistent-storage
-- Commit SHA terbaru: [akan diisi setelah commit]
+- Commit SHA terbaru: 92cf8ff (feat/w2-turso-persistent-storage)
 - File berubah:
   - `db_turso.py` (baru: adapter database Turso libSQL + SQLite fallback)
   - `interop.py` (fail-closed durableStorage logic)
