@@ -83,9 +83,23 @@ class Wisata02(unittest.TestCase):
         self.assertEqual(j['entityTypes'], ['tourist_attraction'])
         self.assertIn('email', j['requiredCustomerFields'])
         self.assertIs(j['durableStorage'], False)  # the test DB lives in /tmp: capabilities must not overclaim
+        # Negative test: flag set to true but storage is ephemeral in /tmp -> must stay False (fail-closed)
         os.environ['INTEROP_DURABLE_STORAGE'] = 'true'
-        try: self.assertIs(C.get(P + '/capabilities', headers=H).json['durableStorage'], True)  # operator declares a persistent volume
-        finally: del os.environ['INTEROP_DURABLE_STORAGE']
+        try:
+            self.assertIs(C.get(P + '/capabilities', headers=H).json['durableStorage'], False)
+        finally:
+            del os.environ['INTEROP_DURABLE_STORAGE']
+
+        # Probe test: Turso configured and probe succeeds -> durableStorage is True
+        from unittest.mock import patch
+        with patch('db_turso.is_turso_configured', return_value=True), \
+             patch('db_turso.is_durable', return_value=True):
+            self.assertIs(C.get(P + '/capabilities', headers=H).json['durableStorage'], True)
+
+        # Fail-closed test: Turso configured but probe fails -> durableStorage is False
+        with patch('db_turso.is_turso_configured', return_value=True), \
+             patch('db_turso.is_durable', return_value=False):
+            self.assertIs(C.get(P + '/capabilities', headers=H).json['durableStorage'], False)
 
     def test_02_offers_shape_filters_and_region_form(self):
         o = self.first(regionId='diy:kabupaten-sleman', quantity=2, limit=3)
@@ -171,6 +185,54 @@ class Wisata02(unittest.TestCase):
     def test_08_legacy_routes_are_untouched(self):
         self.assertEqual(C.get('/api/v1/health').status_code, 200)
         self.assertEqual(C.get('/api/v1/destinations').status_code, 200)
+
+    def test_09_partner_booking_qty_validation(self):
+        # Non-numeric or boolean qty must return 400 (not 500)
+        body = {
+            'destination_id': 1, 'visit_date': DAY, 'qty': 'non-integer',
+            'external_ref': 'LEGACY-' + uuid.uuid4().hex[:8],
+            'customer': {'name': 'Budi', 'email': 'budi@example.test', 'phone': '08123456789'}
+        }
+        r = C.post('/api/v1/partner/bookings', json=body, headers=H)
+        self.assertEqual(r.status_code, 400)
+        body['qty'] = True
+        r = C.post('/api/v1/partner/bookings', json=body, headers=H)
+        self.assertEqual(r.status_code, 400)
+        body['qty'] = -1
+        r = C.post('/api/v1/partner/bookings', json=body, headers=H)
+        self.assertEqual(r.status_code, 400)
+
+    def test_10_partner_booking_request_fingerprint_idempotency(self):
+        ref = 'LEGACY-' + uuid.uuid4().hex[:8]
+        idem = 'IDEM-' + uuid.uuid4().hex[:8]
+        body = {
+            'destination_id': 1, 'visit_date': DAY, 'qty': 1,
+            'external_ref': ref,
+            'customer': {'name': 'Budi', 'email': 'budi@example.test', 'phone': '08123456789'}
+        }
+        r1 = C.post('/api/v1/partner/bookings', json=body, headers={**H, 'Idempotency-Key': idem})
+        self.assertEqual(r1.status_code, 201)
+        # Replay same payload and key -> 200 OK same booking
+        r2 = C.post('/api/v1/partner/bookings', json=body, headers={**H, 'Idempotency-Key': idem})
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.json['code'], r1.json['code'])
+        # Replay same key but different payload -> 409 Conflict
+        body_diff = {**body, 'qty': 2}
+        r3 = C.post('/api/v1/partner/bookings', json=body_diff, headers={**H, 'Idempotency-Key': idem})
+        self.assertEqual(r3.status_code, 409)
+
+    def test_11_admin_default_credentials_hardened_in_prod(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {'VERCEL': '1'}):
+            import app as w
+            prev_is_vercel = w.IS_VERCEL
+            w.IS_VERCEL = True
+            try:
+                # In production, default admin token 'admin123' must be rejected
+                r = C.post('/api/v1/destinations', headers={'X-Admin-Token': 'admin123'}, json={'name': 'test'})
+                self.assertEqual(r.status_code, 403)
+            finally:
+                w.IS_VERCEL = prev_is_vercel
 
     @classmethod
     def tearDownClass(cls):
