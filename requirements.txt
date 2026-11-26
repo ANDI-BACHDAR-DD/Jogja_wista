@@ -2,3 +2,4 @@ Flask
 flask-cors
 openpyxl
 Pillow
+libsql-client>=0.3.0
