@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://jogjatrip.example/schemas/capabilities.schema.json",
+  "title": "Capabilities",
+  "type": "object",
+  "required": [
+    "contract",
+    "provider",
+    "entityTypes",
+    "holds",
+    "holdTtlMinutes",
+    "durableStorage",
+    "location"
+  ],
+  "properties": {
+    "contract": {
+      "type": "string",
+      "const": "0.2.0"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "hotel",
+        "wisata",
+        "transport"
+      ]
+    },
+    "entityTypes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "lodging",
+          "tourist_attraction",
+          "vehicle_rental"
+        ]
+      },
+      "minItems": 1
+    },
+    "holds": {
+      "type": "boolean"
+    },
+    "holdTtlMinutes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "durableStorage": {
+      "type": "boolean",
+      "description": "Must be honest: false when holds are lost on restart. Consumers only enable booking when true."
+    },
+    "location": {
+      "type": "string",
+      "enum": [
+        "point",
+        "region"
+      ]
+    },
+    "requiredCustomerFields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "name",
+          "phone",
+          "email"
+        ]
+      },
+      "description": "A consumer must collect these before sending a hold. Default when absent: name, phone."
+    },
+    "optionalCustomerFields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "name",
+          "phone",
+          "email"
+        ]
+      }
+    },
+    "maxQuantity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Largest quantity accepted by one hold. Default 1 when absent."
+    },
+    "paymentSupported": {
+      "type": "boolean"
+    },
+    "paymentMode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "simulated"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://jogjatrip.example/schemas/offer.schema.json",
+  "title": "Offer",
+  "type": "object",
+  "required": [
+    "offerId",
+    "provider",
+    "entityType",
+    "resourceId",
+    "regionId",
+    "name",
+    "description",
+    "imageUrl",
+    "price",
+    "priceUnit",
+    "currency",
+    "period",
+    "totalPrice",
+    "available",
+    "remaining",
+    "location",
+    "attributes"
+  ],
+  "properties": {
+    "offerId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "description": "Opaque. Bound to the partner, dates and quantity. A consumer must never build one."
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Offers live about 5 minutes; a hold on a lapsed offer is 422 INVALID_OFFER."
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "hotel",
+        "wisata",
+        "transport"
+      ]
+    },
+    "entityType": {
+      "type": "string",
+      "enum": [
+        "lodging",
+        "tourist_attraction",
+        "vehicle_rental"
+      ]
+    },
+    "resourceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "regionId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^diy:[a-z-]+$",
+          "description": "CRS conceptId, e.g. diy:kabupaten-sleman. null when the resource is not region-bound (vehicle_rental)."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "description": "May be empty."
+    },
+    "imageUrl": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^https://[^\\s]+$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Absolute https URL or null. Never a relative path: the consumer lives on another origin."
+    },
+    "price": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "priceUnit": {
+      "type": "string",
+      "enum": [
+        "night",
+        "ticket",
+        "day",
+        "trip",
+        "person"
+      ]
+    },
+    "currency": {
+      "type": "string",
+      "const": "IDR"
+    },
+    "priceType": {
+      "type": "string",
+      "const": "SIMULATED"
+    },
+    "simulation": {
+      "type": "boolean",
+      "const": true
+    },
+    "period": {
+      "type": "object",
+      "required": [
+        "startDate"
+      ],
+      "properties": {
+        "startDate": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "endDate": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "totalPrice": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "available": {
+      "type": "boolean"
+    },
+    "remaining": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "location": {
+      "type": "object",
+      "required": [
+        "lat",
+        "lng"
+      ],
+      "properties": {
+        "lat": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "lng": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Free per type. A consumer may display it but must not depend on it."
+    }
+  },
+  "additionalProperties": true
+}

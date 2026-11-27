@@ -1,0 +1,713 @@
+openapi: 3.0.3
+info:
+  title: JogjaTrip Interoperability Contract
+  version: 0.2.0
+  description: 'Contract 0.2: how JogjaStay, JogjaTrans, Wisata Jogja and JogjaTrip hold, confirm and release one another''s inventory. Every
+    provider implements these six operations on its own origin; every consumer talks to the owner of the data directly. No money moves (all prices
+    are SIMULATED). See docs/integration-guide.md.'
+servers:
+- url: '{origin}/api/v1'
+  variables:
+    origin:
+      default: https://provider.example.test
+security:
+- partnerToken: []
+tags:
+- name: interop
+paths:
+  /interop/capabilities:
+    get:
+      tags:
+      - interop
+      operationId: getCapabilities
+      summary: What this provider can do. Consumers call this before showing any booking UI; on failure or holds != true they hide the panel.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+        '401':
+          description: Missing or unknown partner token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: 'INTEROP_NOT_CONFIGURED: signing key or schema missing (fail closed)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interop/offers:
+    get:
+      tags:
+      - interop
+      operationId: getOffers
+      summary: Offers that can be held now.
+      parameters:
+      - name: startDate
+        in: query
+        required: true
+        description: 'First day. lodging: check-in; vehicle_rental: first day; tourist_attraction: the visit day (endDate is ignored).'
+        schema:
+          type: string
+          format: date
+      - name: endDate
+        in: query
+        required: false
+        description: 'lodging: check-out (exclusive). vehicle_rental: last day (inclusive, max 30 days).'
+        schema:
+          type: string
+          format: date
+      - name: entityType
+        in: query
+        required: false
+        description: Restrict to one entity type.
+        schema:
+          type: string
+          enum:
+          - lodging
+          - tourist_attraction
+          - vehicle_rental
+      - name: regionId
+        in: query
+        required: false
+        description: CRS conceptId (diy:kabupaten-sleman). Providers also accept their own slug form. Ignored by vehicle_rental.
+        schema:
+          type: string
+      - name: lat
+        in: query
+        required: false
+        description: Optional; ignored by providers without coordinates.
+        schema:
+          type: number
+      - name: lng
+        in: query
+        required: false
+        description: Optional.
+        schema:
+          type: number
+      - name: radiusKm
+        in: query
+        required: false
+        description: Optional.
+        schema:
+          type: number
+      - name: quantity
+        in: query
+        required: false
+        description: Units or tickets wanted (default 1). A provider that cannot hold that many returns no offers.
+        schema:
+          type: integer
+          minimum: 1
+      - name: limit
+        in: query
+        required: false
+        description: Maximum offers (default 50, provider cap 100).
+        schema:
+          type: integer
+          minimum: 1
+      - name: type
+        in: query
+        required: false
+        description: 'vehicle_rental only: mobil | motor | all.'
+        schema:
+          type: string
+          enum:
+          - all
+          - mobil
+          - motor
+      - name: withDriver
+        in: query
+        required: false
+        description: vehicle_rental only.
+        schema:
+          type: string
+          enum:
+          - 'true'
+          - 'false'
+      responses:
+        '200':
+          description: OK; an empty list is a normal answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OffersResponse'
+        '400':
+          description: INVALID_DATES | INVALID_FILTER | INVALID_REGION
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: INTEROP_NOT_CONFIGURED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interop/holds:
+    post:
+      tags:
+      - interop
+      operationId: createHold
+      summary: Hold stock for 15 minutes. A hold counts as stock for everybody.
+      parameters:
+      - &id002
+        name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{16,100}$
+        description: Same key + same body = same answer, no second hold. Same key + different body = 409 IDEMPOTENCY_CONFLICT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HoldRequest'
+      responses:
+        '201':
+          description: Hold created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '200':
+          description: 'Replay: same key and same body'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '400':
+          description: CONSENT_REQUIRED | INVALID_HOLD | INVALID_CUSTOMER | INVALID_QUANTITY | IDEMPOTENCY_REQUIRED | BAD_JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: IDEMPOTENCY_CONFLICT | NOT_AVAILABLE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'INVALID_OFFER: unknown, expired, tampered, or no longer matching the catalog'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interop/holds/{holdId}:
+    get:
+      tags:
+      - interop
+      operationId: getHold
+      summary: Current state. Only the partner that created the hold can read it (otherwise 404). Expiry is computed on read.
+      parameters:
+      - &id001
+        name: holdId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interop/holds/{holdId}/confirm:
+    post:
+      tags:
+      - interop
+      operationId: confirmHold
+      summary: Turn a live hold into the provider's reservation. Repeating it returns the same answer.
+      parameters:
+      - *id001
+      - *id002
+      responses:
+        '200':
+          description: reserved (with voucher)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: HOLD_EXPIRED | HOLD_RELEASED | HOLD_NOT_ACTIVE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /interop/holds/{holdId}/release:
+    post:
+      tags:
+      - interop
+      operationId: releaseHold
+      summary: Give the stock back. Idempotent. Not a rollback of a confirmed reservation.
+      parameters:
+      - *id001
+      - *id002
+      responses:
+        '200':
+          description: cancelled (or already expired)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: ALREADY_CONFIRMED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    partnerToken:
+      type: http
+      scheme: bearer
+      description: One secret per partner and provider, at least 24 characters, set as an environment secret. Never in the repository.
+  schemas:
+    Error:
+      type: object
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: string
+          pattern: ^[A-Z0-9_]{1,60}$
+        message:
+          type: string
+      additionalProperties: true
+      description: Every non-2xx answer. `code` is stable and machine-readable; `message` is for people.
+    Capabilities:
+      type: object
+      required:
+      - contract
+      - provider
+      - entityTypes
+      - holds
+      - holdTtlMinutes
+      - durableStorage
+      - location
+      properties:
+        contract:
+          type: string
+          const: 0.2.0
+        provider:
+          type: string
+          enum:
+          - hotel
+          - wisata
+          - transport
+        entityTypes:
+          type: array
+          items: &id003
+            type: string
+            enum:
+            - lodging
+            - tourist_attraction
+            - vehicle_rental
+          minItems: 1
+        holds:
+          type: boolean
+        holdTtlMinutes:
+          type: integer
+          minimum: 1
+        durableStorage:
+          type: boolean
+          description: 'Must be honest: false when holds are lost on restart. Consumers only enable booking when true.'
+        location:
+          type: string
+          enum:
+          - point
+          - region
+        requiredCustomerFields:
+          type: array
+          items:
+            type: string
+            enum:
+            - name
+            - phone
+            - email
+          description: 'A consumer must collect these before sending a hold. Default when absent: name, phone.'
+        optionalCustomerFields:
+          type: array
+          items:
+            type: string
+            enum:
+            - name
+            - phone
+            - email
+        maxQuantity:
+          type: integer
+          minimum: 1
+          description: Largest quantity accepted by one hold. Default 1 when absent.
+        paymentSupported:
+          type: boolean
+        paymentMode:
+          type: string
+          enum:
+          - none
+          - simulated
+      additionalProperties: true
+    Offer:
+      type: object
+      required:
+      - offerId
+      - provider
+      - entityType
+      - resourceId
+      - regionId
+      - name
+      - description
+      - imageUrl
+      - price
+      - priceUnit
+      - currency
+      - period
+      - totalPrice
+      - available
+      - remaining
+      - location
+      - attributes
+      properties:
+        offerId:
+          type: string
+          minLength: 1
+          maxLength: 400
+          description: Opaque. Bound to the partner, dates and quantity. A consumer must never build one.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Offers live about 5 minutes; a hold on a lapsed offer is 422 INVALID_OFFER.
+        provider:
+          type: string
+          enum:
+          - hotel
+          - wisata
+          - transport
+        entityType: *id003
+        resourceId:
+          type: string
+          minLength: 1
+        regionId:
+          anyOf:
+          - type: string
+            pattern: ^diy:[a-z-]+$
+            description: CRS conceptId, e.g. diy:kabupaten-sleman. null when the resource is not region-bound (vehicle_rental).
+          - type: 'null'
+        name:
+          type: string
+        description:
+          type: string
+          description: May be empty.
+        imageUrl:
+          anyOf:
+          - type: string
+            pattern: ^https://[^\s]+$
+          - type: 'null'
+          description: 'Absolute https URL or null. Never a relative path: the consumer lives on another origin.'
+        price:
+          type: integer
+          minimum: 0
+        priceUnit:
+          type: string
+          enum:
+          - night
+          - ticket
+          - day
+          - trip
+          - person
+        currency:
+          type: string
+          const: IDR
+        priceType:
+          type: string
+          const: SIMULATED
+        simulation:
+          type: boolean
+          const: true
+        period:
+          type: object
+          required:
+          - startDate
+          properties:
+            startDate: &id004
+              type: string
+              format: date
+              pattern: ^\d{4}-\d{2}-\d{2}$
+            endDate:
+              anyOf:
+              - *id004
+              - type: 'null'
+        quantity:
+          type: integer
+          minimum: 1
+        totalPrice:
+          type: integer
+          minimum: 0
+        available:
+          type: boolean
+        remaining:
+          type: integer
+          minimum: 0
+        location:
+          type: object
+          required:
+          - lat
+          - lng
+          properties:
+            lat:
+              type:
+              - number
+              - 'null'
+            lng:
+              type:
+              - number
+              - 'null'
+        attributes:
+          type: object
+          description: Free per type. A consumer may display it but must not depend on it.
+      additionalProperties: true
+    OffersResponse:
+      type: object
+      required:
+      - provider
+      - generatedAt
+      - offers
+      properties:
+        provider:
+          type: string
+          enum:
+          - hotel
+          - wisata
+          - transport
+        generatedAt:
+          type: string
+          format: date-time
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Offer'
+      additionalProperties: true
+    Customer:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        phone:
+          type: string
+          pattern: ^[0-9+\- ]{9,20}$
+        email:
+          type: string
+          maxLength: 120
+      additionalProperties: false
+    HoldRequest:
+      type: object
+      required:
+      - offerId
+      - customer
+      - externalRef
+      - consent
+      properties:
+        offerId:
+          type: string
+          minLength: 1
+          maxLength: 400
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        customer:
+          $ref: '#/components/schemas/Customer'
+        externalRef:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,64}$
+          description: One value per order, identical for every provider the order touches.
+        consent:
+          type: boolean
+          const: true
+        notes:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    Voucher:
+      type: object
+      required:
+      - code
+      - note
+      properties:
+        code:
+          type: string
+        note:
+          type: string
+      additionalProperties: true
+    Hold:
+      type: object
+      required:
+      - holdId
+      - offerId
+      - externalRef
+      - reservationState
+      - paymentState
+      - totalPrice
+      - currency
+      - expiresAt
+      properties:
+        holdId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,100}$
+        offerId:
+          type: string
+        externalRef:
+          type: string
+        provider:
+          type: string
+          enum:
+          - hotel
+          - wisata
+          - transport
+        resourceId:
+          type: string
+        startDate: *id004
+        endDate: *id004
+        quantity:
+          type: integer
+        reservationState:
+          type: string
+          enum:
+          - awaiting_payment
+          - reserved
+          - cancelled
+          - expired
+        paymentState:
+          type: string
+          enum:
+          - unpaid
+          - paid
+          - refunded
+          - partially_refunded
+          - expired
+          - not_applicable
+        fulfillmentState:
+          type: string
+          description: Provider-owned; informational.
+        totalPrice:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          const: IDR
+        priceType:
+          type: string
+          const: SIMULATED
+        simulation:
+          type: boolean
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Hold deadline. May be null once the hold is reserved or cancelled.
+        voucher:
+          $ref: '#/components/schemas/Voucher'
+      additionalProperties: true
+      allOf:
+      - if:
+          properties:
+            reservationState:
+              const: reserved
+          required:
+          - reservationState
+        then:
+          required:
+          - voucher
+    Handoff:
+      type: object
+      required:
+      - from
+      description: Query parameters a provider puts on the link that opens JogjaTrip. Observed in the three deployed systems; JogjaTrip ignores
+        unknown keys and re-validates every value. Carries no personal data.
+      properties:
+        from:
+          type: string
+          enum:
+          - jogjastay
+          - jogjatrans
+          - wisata
+        hotelId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,60}$
+        checkIn: *id004
+        checkOut: *id004
+        vehicleId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,60}$
+        startDate: *id004
+        endDate: *id004
+        withDriver:
+          type: string
+          enum:
+          - 'true'
+          - 'false'
+        destinationId:
+          type: string
+          pattern: ^[1-9][0-9]{0,14}$
+        visitDate: *id004
+      additionalProperties: true

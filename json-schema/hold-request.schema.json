@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://jogjatrip.example/schemas/hold-request.schema.json",
+  "title": "HoldRequest",
+  "type": "object",
+  "required": [
+    "offerId",
+    "customer",
+    "externalRef",
+    "consent"
+  ],
+  "properties": {
+    "offerId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "customer": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^[0-9+\\- ]{9,20}$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "description": "One value per order, identical for every provider the order touches."
+    },
+    "consent": {
+      "type": "boolean",
+      "const": true
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 500
+    }
+  },
+  "additionalProperties": false
+}

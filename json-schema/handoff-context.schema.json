@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://jogjatrip.example/schemas/handoff-context.schema.json",
+  "title": "Handoff",
+  "type": "object",
+  "required": [
+    "from"
+  ],
+  "description": "Query parameters a provider puts on the link that opens JogjaTrip. Observed in the three deployed systems; JogjaTrip ignores unknown keys and re-validates every value. Carries no personal data.",
+  "properties": {
+    "from": {
+      "type": "string",
+      "enum": [
+        "jogjastay",
+        "jogjatrans",
+        "wisata"
+      ]
+    },
+    "hotelId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,60}$"
+    },
+    "checkIn": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "checkOut": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "vehicleId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,60}$"
+    },
+    "startDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "withDriver": {
+      "type": "string",
+      "enum": [
+        "true",
+        "false"
+      ]
+    },
+    "destinationId": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,14}$"
+    },
+    "visitDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    }
+  },
+  "additionalProperties": true
+}
