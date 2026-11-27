@@ -59,6 +59,15 @@ try {
   const offer = offers.data.offers[0];
   if (!offer) { rec('03 at least one offer for the chosen dates', null, 'no offer: pick other --start/--region'); throw new Error('no offer'); }
   const stockBefore = offer.remaining;
+  // Region is a strict filter (add-on recommendations stay inside the city of the main item).
+  const regionAsked = args.region || offer.regionId;
+  if (regionAsked) {
+    const scoped = args.region ? offers : await call('/offers?' + new URLSearchParams({startDate: start, endDate: end, entityType: entity, quantity: '1', limit: '20', regionId: regionAsked}));
+    check('03 regionId filter is strict (every offer is in the requested region)', scoped.status === 200 && scoped.data.offers.length > 0 && scoped.data.offers.every(o => o.regionId === regionAsked), `asked ${regionAsked}, got ${[...new Set(scoped.data?.offers?.map(o => o.regionId))]}`);
+    const elsewhere = regionAsked === 'diy:kabupaten-bantul' ? 'diy:kabupaten-sleman' : 'diy:kabupaten-bantul';
+    const other = await call('/offers?' + new URLSearchParams({startDate: start, endDate: end, entityType: entity, quantity: '1', limit: '20', regionId: elsewhere}));
+    check('03 another region never returns offers of the first one', other.status === 200 && other.data.offers.every(o => o.regionId === elsewhere), `asked ${elsewhere}, got ${[...new Set(other.data?.offers?.map(o => o.regionId))]}`);
+  } else rec('03 regionId filter is strict', null, 'offers carry no regionId; pass --region');
   check('03 bad dates -> 400', (await call('/offers?startDate=not-a-date')).status === 400, 'expected 400');
 
   // 3. Hold, replay, conflicts
@@ -112,6 +121,28 @@ try {
       check('10 confirm twice -> same answer', (await call(`/holds/${h2.data.holdId}/confirm`, {method: 'POST', key: newKey()})).data?.holdId === h2.data.holdId, 'expected same hold');
       const rr = await call(`/holds/${h2.data.holdId}/release`, {method: 'POST', key: newKey()});
       check('10 release after confirm -> 409 ALREADY_CONFIRMED', rr.status === 409 && rr.data?.code === 'ALREADY_CONFIRMED', `${rr.status} ${rr.data?.code}`);
+      // Simulated payment on confirm (one payment for the whole basket; no money moves).
+      const mode = caps.data.paymentMode || 'none';
+      const o3 = (await call('/offers?' + qs)).data.offers[0];
+      const h3 = o3 && await call('/holds', {method: 'POST', body: {offerId: o3.offerId, externalRef: 'CT-' + randomUUID().slice(0, 12), consent: true, customer}, key: newKey()});
+      if (h3?.status === 201) {
+        const id3 = h3.data.holdId, total = h3.data.totalPrice;
+        if (mode === 'simulated') {
+          const wrong = await call(`/holds/${id3}/confirm`, {method: 'POST', key: newKey(), body: {payment: {method: 'simulated', reference: 'PAY-' + randomUUID().slice(0, 10), amount: total + 1}}});
+          check('11 payment with wrong amount -> 400 INVALID_PAYMENT, hold untouched', wrong.status === 400 && wrong.data?.code === 'INVALID_PAYMENT' && (await call(`/holds/${id3}`)).data?.reservationState === 'awaiting_payment', `${wrong.status} ${wrong.data?.code}`);
+          const pay = {payment: {method: 'simulated', reference: 'PAY-' + randomUUID().slice(0, 10), amount: total}}, kp = newKey();
+          const paid = await call(`/holds/${id3}/confirm`, {method: 'POST', key: kp, body: pay});
+          check('11 confirm with payment -> reserved + paid + payment.reference + voucher', paid.status === 200 && V.hold(paid.data) && paid.data.reservationState === 'reserved' && paid.data.paymentState === 'paid' && paid.data.payment?.reference === pay.payment.reference && !!paid.data.voucher?.code, `${paid.status} ${JSON.stringify(paid.data)}`);
+          const again = await call(`/holds/${id3}/confirm`, {method: 'POST', key: kp, body: pay});
+          check('11 same key + same payment -> same answer', again.status === 200 && again.data?.holdId === id3 && again.data?.paymentState === 'paid', `${again.status} ${JSON.stringify(again.data)}`);
+          const clash = await call(`/holds/${id3}/confirm`, {method: 'POST', key: kp, body: {payment: {...pay.payment, reference: 'PAY-other0001'}}});
+          check('11 same key + different payment -> 409 IDEMPOTENCY_CONFLICT', clash.status === 409 && clash.data?.code === 'IDEMPOTENCY_CONFLICT', `${clash.status} ${clash.data?.code}`);
+        } else {
+          const np = await call(`/holds/${id3}/confirm`, {method: 'POST', key: newKey(), body: {payment: {method: 'simulated', reference: 'PAY-' + randomUUID().slice(0, 10), amount: total}}});
+          check('11 provider without payment support -> 400 PAYMENT_NOT_SUPPORTED', np.status === 400 && np.data?.code === 'PAYMENT_NOT_SUPPORTED', `${np.status} ${np.data?.code}`);
+          await call(`/holds/${id3}/release`, {method: 'POST', key: newKey()});
+        }
+      } else rec('11 payment path', null, 'no third hold available for the payment checks');
     } else check('10 second hold for the confirm path', false, `${h2.status} ${JSON.stringify(h2.data)}`);
   } else rec('10 confirm path', null, 'pass --confirm on staging to exercise it');
 } catch (e) { if (!/unusable|no offer|hold failed/.test(e.message)) rec('crash', false, e.message); }

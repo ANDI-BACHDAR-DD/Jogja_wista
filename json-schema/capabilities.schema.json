@@ -91,7 +91,17 @@
       "enum": [
         "none",
         "simulated"
-      ]
+      ],
+      "description": "simulated = confirm accepts a `payment` object and records the hold as paid (no money moves). none = confirm rejects `payment` with 400 PAYMENT_NOT_SUPPORTED. Default when absent: none."
+    },
+    "serviceRegions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^diy:[a-z-]+$",
+        "description": "CRS conceptId, e.g. diy:kabupaten-sleman. vehicle_rental offers carry the pickup region that was requested, or null when none was."
+      },
+      "description": "vehicle_rental only: regions where pickup or delivery is possible. An offers request for any other region returns an empty list."
     }
   },
   "additionalProperties": true

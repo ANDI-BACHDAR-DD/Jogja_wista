@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor U as Pengguna
+    participant A as Aplikasi asal (Hotel/Transport/Wisata/Itinerary)
+    participant P as Provider add-on (aplikasi lain)
+    U->>A: Pilih layanan utama + tanggal
+    A->>P: GET /offers?regionId=<wilayah layanan utama>&startDate&endDate
+    P-->>A: offers (semuanya regionId itu)
+    U->>A: Pilih add-on + setuju kirim kontak
+    A->>A: Simpan pesanan + niat (journal)
+    A->>P: POST /holds (Idempotency-Key stabil, externalRef sama)
+    alt hold ditolak pasti
+        P-->>A: 409 NOT_AVAILABLE dst.
+        A->>A: lanjut tanpa add-on itu
+    else hasil tidak pasti
+        A->>P: release hold lain, berhenti (UNKNOWN)
+    end
+    A->>A: Catat layanan utama (gagal: release semua hold)
+    U->>A: Bayar SEKALI (simulasi)
+    A->>A: Layanan utama PAID (gagal: release semua hold)
+    A->>P: POST /holds/{id}/confirm {payment:{simulated, reference, amount}}
+    P-->>A: 200 reserved + paid + payment.reference + voucher
+    Note over A,P: tidak pasti -> GET /holds/{id}; tidak pernah auto-cancel setelah confirm

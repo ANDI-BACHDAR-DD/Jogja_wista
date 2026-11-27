@@ -95,6 +95,29 @@
       "format": "date-time",
       "description": "Hold deadline. May be null once the hold is reserved or cancelled."
     },
+    "payment": {
+      "type": "object",
+      "required": [
+        "method",
+        "reference",
+        "paidAt"
+      ],
+      "properties": {
+        "method": {
+          "type": "string",
+          "const": "simulated"
+        },
+        "reference": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "paidAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "Present when the confirm carried a payment. paymentState is then `paid`."
+    },
     "voucher": {
       "type": "object",
       "required": [

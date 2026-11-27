@@ -59,7 +59,7 @@
         {
           "type": "string",
           "pattern": "^diy:[a-z-]+$",
-          "description": "CRS conceptId, e.g. diy:kabupaten-sleman. null when the resource is not region-bound (vehicle_rental)."
+          "description": "CRS conceptId, e.g. diy:kabupaten-sleman. vehicle_rental offers carry the pickup region that was requested, or null when none was."
         },
         {
           "type": "null"

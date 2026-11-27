@@ -3,8 +3,8 @@ info:
   title: JogjaTrip Interoperability Contract
   version: 0.2.0
   description: 'Contract 0.2: how JogjaStay, JogjaTrans, Wisata Jogja and JogjaTrip hold, confirm and release one another''s inventory. Every
-    provider implements these six operations on its own origin; every consumer talks to the owner of the data directly. No money moves (all prices
-    are SIMULATED). See docs/integration-guide.md.'
+    provider implements these six operations on its own origin; every consumer talks to the owner of the data directly. No money moves: all prices
+    are SIMULATED and a payment is only a simulated flag on confirm. See docs/integration-guide.md.'
 servers:
 - url: '{origin}/api/v1'
   variables:
@@ -74,7 +74,8 @@ paths:
       - name: regionId
         in: query
         required: false
-        description: CRS conceptId (diy:kabupaten-sleman). Providers also accept their own slug form. Ignored by vehicle_rental.
+        description: 'CRS conceptId (diy:kabupaten-sleman). A strict filter: every returned offer has this regionId. For vehicle_rental it is
+          the pickup or delivery region (see capabilities.serviceRegions). Add-on recommendations always send the region of the main item.'
         schema:
           type: string
       - name: lat
@@ -248,10 +249,16 @@ paths:
       tags:
       - interop
       operationId: confirmHold
-      summary: Turn a live hold into the provider's reservation. Repeating it returns the same answer.
+      summary: 'Turn a live hold into the provider''s reservation. Repeating it returns the same answer. Optional body: one simulated payment.'
       parameters:
       - *id001
       - *id002
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRequest'
       responses:
         '200':
           description: reserved (with voucher)
@@ -265,6 +272,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '400':
+          description: INVALID_PAYMENT | PAYMENT_NOT_SUPPORTED | BAD_JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: NOT_FOUND
           content:
@@ -272,7 +285,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '409':
-          description: HOLD_EXPIRED | HOLD_RELEASED | HOLD_NOT_ACTIVE
+          description: HOLD_EXPIRED | HOLD_RELEASED | HOLD_NOT_ACTIVE | IDEMPOTENCY_CONFLICT
           content:
             application/json:
               schema:
@@ -401,6 +414,17 @@ components:
           enum:
           - none
           - simulated
+          description: 'simulated = confirm accepts a `payment` object and records the hold as paid (no money moves). none = confirm rejects `payment`
+            with 400 PAYMENT_NOT_SUPPORTED. Default when absent: none.'
+        serviceRegions:
+          type: array
+          items: &id004
+            type: string
+            pattern: ^diy:[a-z-]+$
+            description: CRS conceptId, e.g. diy:kabupaten-sleman. vehicle_rental offers carry the pickup region that was requested, or null when
+              none was.
+          description: 'vehicle_rental only: regions where pickup or delivery is possible. An offers request for any other region returns an empty
+            list.'
       additionalProperties: true
     Offer:
       type: object
@@ -444,9 +468,7 @@ components:
           minLength: 1
         regionId:
           anyOf:
-          - type: string
-            pattern: ^diy:[a-z-]+$
-            description: CRS conceptId, e.g. diy:kabupaten-sleman. null when the resource is not region-bound (vehicle_rental).
+          - *id004
           - type: 'null'
         name:
           type: string
@@ -484,13 +506,13 @@ components:
           required:
           - startDate
           properties:
-            startDate: &id004
+            startDate: &id005
               type: string
               format: date
               pattern: ^\d{4}-\d{2}-\d{2}$
             endDate:
               anyOf:
-              - *id004
+              - *id005
               - type: 'null'
         quantity:
           type: integer
@@ -587,6 +609,31 @@ components:
           type: string
           maxLength: 500
       additionalProperties: false
+    ConfirmRequest:
+      type: object
+      description: Optional body of confirm. The payment is applied only by the confirm that turns the hold into a reservation. Same key + different
+        body = 409 IDEMPOTENCY_CONFLICT.
+      properties:
+        payment:
+          type: object
+          required:
+          - method
+          - reference
+          - amount
+          properties:
+            method:
+              type: string
+              const: simulated
+            reference:
+              type: string
+              pattern: ^[A-Za-z0-9_-]{1,64}$
+              description: Opaque id of the one simulated payment that covers the whole basket, chosen by the consumer.
+            amount:
+              type: integer
+              minimum: 0
+              description: 'Must equal the hold''s totalPrice, else 400 INVALID_PAYMENT. Simulated: no money moves.'
+          additionalProperties: false
+      additionalProperties: false
     Voucher:
       type: object
       required:
@@ -625,8 +672,8 @@ components:
           - transport
         resourceId:
           type: string
-        startDate: *id004
-        endDate: *id004
+        startDate: *id005
+        endDate: *id005
         quantity:
           type: integer
         reservationState:
@@ -665,6 +712,23 @@ components:
           - 'null'
           format: date-time
           description: Hold deadline. May be null once the hold is reserved or cancelled.
+        payment:
+          type: object
+          required:
+          - method
+          - reference
+          - paidAt
+          properties:
+            method:
+              type: string
+              const: simulated
+            reference:
+              type: string
+              pattern: ^[A-Za-z0-9_-]{1,64}$
+            paidAt:
+              type: string
+              format: date-time
+          description: Present when the confirm carried a payment. paymentState is then `paid`.
         voucher:
           $ref: '#/components/schemas/Voucher'
       additionalProperties: true
@@ -694,13 +758,13 @@ components:
         hotelId:
           type: string
           pattern: ^[A-Za-z0-9_-]{1,60}$
-        checkIn: *id004
-        checkOut: *id004
+        checkIn: *id005
+        checkOut: *id005
         vehicleId:
           type: string
           pattern: ^[A-Za-z0-9_-]{1,60}$
-        startDate: *id004
-        endDate: *id004
+        startDate: *id005
+        endDate: *id005
         withDriver:
           type: string
           enum:
@@ -709,5 +773,5 @@ components:
         destinationId:
           type: string
           pattern: ^[1-9][0-9]{0,14}$
-        visitDate: *id004
+        visitDate: *id005
       additionalProperties: true

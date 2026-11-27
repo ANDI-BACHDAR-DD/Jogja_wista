@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://jogjatrip.example/schemas/confirm-request.schema.json",
+  "title": "ConfirmRequest",
+  "type": "object",
+  "description": "Optional body of confirm. The payment is applied only by the confirm that turns the hold into a reservation. Same key + different body = 409 IDEMPOTENCY_CONFLICT.",
+  "properties": {
+    "payment": {
+      "type": "object",
+      "required": [
+        "method",
+        "reference",
+        "amount"
+      ],
+      "properties": {
+        "method": {
+          "type": "string",
+          "const": "simulated"
+        },
+        "reference": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "description": "Opaque id of the one simulated payment that covers the whole basket, chosen by the consumer."
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal the hold's totalPrice, else 400 INVALID_PAYMENT. Simulated: no money moves."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

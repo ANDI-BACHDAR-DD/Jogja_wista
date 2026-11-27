@@ -1,0 +1,45 @@
+%% JogjaTrip menyusun paket multi-hari dan memesan ke pemilik data masing-masing. Itinerary bukan perantara data:
+%% ia hanya orkestrator pesanan paketnya sendiri; tiap penyedia tetap menyimpan reservasinya.
+sequenceDiagram
+    autonumber
+    actor U as Pengguna
+    participant I as JogjaTrip (Itinerary)
+    participant S as JogjaStay (Hotel)
+    participant T as JogjaTrans (Transport)
+    participant W as Wisata Jogja
+
+    U->>I: Susun paket (bundling atau builder bebas), ubah bila perlu, checkout
+    par Deteksi kemampuan
+        I->>S: GET /interop/capabilities
+        I->>T: GET /interop/capabilities
+        I->>W: GET /interop/capabilities
+    end
+    Note over U,I: Penyedia yang tidak lolos capabilities ditandai<br/>"belum bisa dipesan di sini", tanpa tebakan
+    U->>I: Setujui pengiriman data kontak (consent), bayar simulasi
+    Note over U,I: externalRef SAMA untuk semua penyedia dalam satu pesanan
+    I->>S: POST /interop/holds
+    S-->>I: 201 awaiting_payment
+    I->>T: POST /interop/holds
+    T-->>I: 201 awaiting_payment
+    I->>W: POST /interop/holds
+    alt Semua hold berhasil
+        W-->>I: 201 awaiting_payment
+        I->>S: POST /holds/{id}/confirm
+        S-->>I: reserved
+        I->>T: POST /holds/{id}/confirm
+        T-->>I: reserved
+        I->>W: POST /holds/{id}/confirm
+        W-->>I: reserved
+        I-->>U: CONFIRMED (semua voucher)
+    else Salah satu hold gagal (NOT_AVAILABLE, 422, timeout pasti)
+        W-->>I: 409 NOT_AVAILABLE
+        I->>S: POST /holds/{id}/release
+        I->>T: POST /holds/{id}/release
+        I-->>U: Tidak ada yang dipesan, hold dilepas
+    else Confirm sebagian berhasil lalu gagal
+        I->>T: POST /holds/{id}/confirm
+        T--xI: timeout
+        I->>T: GET /holds/{id} (rekonsiliasi, kunci lama)
+        Note over I: Yang sudah reserved TIDAK dibatalkan otomatis.<br/>Status PARTIAL atau UNKNOWN + tindak lanjut manual
+        I-->>U: PARTIAL, rincian per penyedia
+    end

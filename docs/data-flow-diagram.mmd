@@ -1,0 +1,36 @@
+%% Aliran data: siapa menyimpan apa, siapa memanggil siapa. Garis tebal = interop langsung antar penyedia.
+flowchart LR
+    U([Pengguna])
+    subgraph CRS["CRS v0.1.1 (satu berkas identik di 4 repo)"]
+        V[["wilayah, entityType, state, satuan harga"]]
+    end
+    subgraph H["JogjaStay (Hotel) - JS + D1"]
+        Hdb[(kamar, booking, booking_interop_groups)]
+    end
+    subgraph T["JogjaTrans (Transport) - Rust + D1"]
+        Tdb[(rental_bookings, interop_holds)]
+    end
+    subgraph W["Wisata Jogja - Flask + SQLite"]
+        Wdb[(destinations, bookings = hold + tiket)]
+    end
+    subgraph I["JogjaTrip (Itinerary) - TS Workers"]
+        Idb[(rencana, pesanan paket, jurnal saga)]
+    end
+    U --> H
+    U --> T
+    U --> W
+    U --> I
+    H ==>|"Contract 0.2: hold/confirm/release kendaraan"| T
+    T -.->|"Tahap 2: hotel"| H
+    T -.->|"Tahap 2: tiket"| W
+    H -.->|"tautan buka, tanpa data pribadi"| W
+    H -->|"handoff from=jogjastay"| I
+    T -->|"handoff from=jogjatrans"| I
+    W -->|"handoff from=wisata"| I
+    I ==>|"Contract 0.2 (klien)"| H
+    I ==>|"Contract 0.2 (klien)"| T
+    I ==>|"Contract 0.2 (klien)"| W
+    CRS -.-> H
+    CRS -.-> T
+    CRS -.-> W
+    CRS -.-> I
