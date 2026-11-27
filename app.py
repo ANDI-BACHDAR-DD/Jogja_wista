@@ -731,6 +731,25 @@ def can_modify_booking(r):
 
 PAYMENT_METHODS = {'qris', 'va_bca', 'va_bni', 'va_mandiri', 'gopay', 'ovo', 'dana'}
 
+def settle_pending(r, code, method):
+    """The one simulated payment of a PENDING ticket booking. Returns (booking_json, None) or (None, error_response)."""
+    if r['expires_at'] and r['expires_at'] < now_iso():
+        db().execute("UPDATE bookings SET status='EXPIRED', updated_at=? WHERE code=?", (now_iso(), code))
+        db().commit()
+        return None, err('Waktu pembayaran habis', 410)
+    db().execute("UPDATE bookings SET status='PAID', paid_at=?, payment_method=?, updated_at=? WHERE code=?",
+        (now_iso(), method, now_iso(), code))
+    db().commit()
+    import mailer
+    b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
+    try:
+        mailer.send_booking_success(b_resp)
+        b_resp['email_sent'] = True
+    except Exception as ex:
+        app.logger.error(f"Mailer error: {ex}")
+        b_resp['email_sent'] = False
+    return b_resp, None
+
 @api_bp.post('/bookings/<code>/pay')
 def pay_booking(code):
     expire_stale()
@@ -743,21 +762,8 @@ def pay_booking(code):
         return err('Metode pembayaran tidak valid')
     # Kasus PENDING (booking baru)
     if r['status'] == 'PENDING':
-        if r['expires_at'] and r['expires_at'] < now_iso():
-            db().execute("UPDATE bookings SET status='EXPIRED', updated_at=? WHERE code=?", (now_iso(), code))
-            db().commit()
-            return err('Waktu pembayaran habis', 410)
-        db().execute("UPDATE bookings SET status='PAID', paid_at=?, payment_method=?, updated_at=? WHERE code=?",
-            (now_iso(), method, now_iso(), code))
-        db().commit()
-        import mailer
-        b_resp = booking(db().execute('SELECT * FROM bookings WHERE code=?', (code,)).fetchone())
-        try:
-            mailer.send_booking_success(b_resp)
-            b_resp['email_sent'] = True
-        except Exception as ex:
-            app.logger.error(f"Mailer error: {ex}")
-            b_resp['email_sent'] = False
+        b_resp, e = settle_pending(r, code, method)
+        if e: return e
         return jsonify(b_resp)
     # Booking sudah EXPIRED (mungkin baru saja di-mark oleh expire_stale)
     if r['status'] == 'EXPIRED':
@@ -783,6 +789,73 @@ def pay_booking(code):
         webhooks.emit_event('booking.rescheduled', b_resp)
         return jsonify(b_resp)
     return err('Booking tidak dapat dibayar', 409)
+
+@api_bp.get('/bookings/<code>/addon-offers')
+def addon_offers(code):
+    """Add-on recommendations for this ticket: only the ticket's region, dates around the visit."""
+    import addons
+    expire_stale()
+    r = one(code)
+    if not r: return err('Booking tidak ditemukan', 404)
+    if not can_modify_booking(r): return err('Akses ditolak', 403)
+    provider = request.args.get('provider', '')
+    if provider not in addons.PROVIDERS: return err('provider harus hotel atau transport')
+    if provider not in addons.configured(): return jsonify({'provider': provider, 'available': False, 'offers': []})
+    d = db().execute('SELECT region FROM destinations WHERE id=?', (r['destination_id'],)).fetchone()
+    try:
+        offers = addons.recommend(r['visit_date'], d['region'] if d else '', provider)
+    except (addons.Rejected, addons.Unknown):
+        return jsonify({'provider': provider, 'available': False, 'offers': []})
+    return jsonify({'provider': provider, 'available': True, 'regionId': 'diy:' + d['region'], 'offers': offers})
+
+@api_bp.post('/bookings/<code>/checkout')
+def checkout_basket(code):
+    """One basket: ticket + optional hotel/vehicle add-ons, ONE simulated payment (no money moves)."""
+    import addons
+    expire_stale()
+    r = one(code)
+    if not r: return err('Booking tidak ditemukan', 404)
+    if not can_modify_booking(r): return err('Akses ditolak', 403)
+    b = request.get_json(silent=True) or {}
+    method = (b.get('payment') or {}).get('method', '')
+    if method not in PAYMENT_METHODS: return err('Metode pembayaran tidak valid')
+    reqs = b.get('addons') or []
+    if not isinstance(reqs, list) or len(reqs) > len(addons.PROVIDERS): return err('addons tidak valid')
+    seen, clean = set(), []
+    for a in reqs:
+        if not isinstance(a, dict) or a.get('provider') not in addons.PROVIDERS or a['provider'] in seen: return err('addons tidak valid')
+        if not isinstance(a.get('offerId'), str) or not a['offerId'] or len(a['offerId']) > 400: return err('offerId tidak valid')
+        if not isinstance(a.get('expectedTotalPrice'), int) or isinstance(a.get('expectedTotalPrice'), bool) or a['expectedTotalPrice'] < 0: return err('expectedTotalPrice tidak valid')
+        seen.add(a['provider']); clean.append({'provider': a['provider'], 'offerId': a['offerId'], 'expectedTotalPrice': a['expectedTotalPrice']})
+    if clean and b.get('consent') is not True: return err('Persetujuan pengiriman data kontak wajib untuk add-on', 400, 'CONSENT_REQUIRED')
+    if any(a['provider'] not in addons.configured() for a in clean): return err('Add-on belum tersedia', 503, 'ADDON_NOT_CONFIGURED')
+    conn = db()
+    addons.ensure(conn)
+    # Replay of a finished basket sends nothing.
+    if r['status'] == 'PAID':
+        rows = addons.list_orders(conn, code)
+        if not rows: return err('Booking sudah dibayar', 409)
+        if any(x['state'] in ('HELD', 'CONFIRM_PENDING', 'CONFIRM_UNKNOWN') for x in rows):
+            # Paid already; finish the confirms with the same keys (provider replays), never a new hold or key.
+            status, items = addons.run_checkout(conn, code, [{'provider': x['provider'], 'offerId': x['offer_id'], 'expectedTotalPrice': x['expected_total']} for x in rows],
+                                                {}, now_iso(), lambda: None)
+            return jsonify({'booking': booking(one(code)), 'addons': items, 'status': status})
+        return jsonify({'booking': booking(r), 'addons': [addons.public(x) for x in rows], 'status': 'REPLAY'})
+    if r['status'] != 'PENDING': return err('Booking tidak dapat dibayar', 409)
+    customer = {'name': r['name'], 'phone': (b.get('customer') or {}).get('phone') or r['phone'] or '', 'email': r['email']}
+    settled = {}
+    def pay_main():
+        resp, e = settle_pending(r, code, method)
+        if e: raise PermissionError('main booking expired')
+        settled['b'] = resp
+    try:
+        status, items = addons.run_checkout(conn, code, clean, customer, now_iso(), pay_main)
+    except PermissionError:
+        return err('Waktu pembayaran habis', 410)
+    if status == 'UNKNOWN' and 'b' not in settled:
+        return jsonify({'status': 'UNKNOWN', 'booking': booking(one(code)), 'addons': items,
+                        'message': 'Status add-on belum pasti; belum ada pembayaran. Ulangi permintaan yang sama.'}), 503
+    return jsonify({'booking': settled.get('b') or booking(one(code)), 'addons': items, 'status': status}), 200
 
 @api_bp.post('/bookings/<code>/cancel')
 def cancel_booking(code):
