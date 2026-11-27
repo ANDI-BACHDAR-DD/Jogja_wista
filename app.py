@@ -102,6 +102,9 @@ def init():
     if 'source' not in cols:
         c.execute("ALTER TABLE bookings ADD COLUMN source TEXT DEFAULT 'web'")
         c.execute("UPDATE bookings SET source='web' WHERE source IS NULL")
+    for extra_col in ('payment_reference', 'confirm_key', 'confirm_fingerprint'):
+        if extra_col not in cols:
+            c.execute(f"ALTER TABLE bookings ADD COLUMN {extra_col} TEXT")
     if 'external_ref' not in cols:
         c.execute("ALTER TABLE bookings ADD COLUMN external_ref TEXT")
     if 'idempotency_key' not in cols:

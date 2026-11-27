@@ -169,6 +169,38 @@ class Wisata02(unittest.TestCase):
             conn.execute('UPDATE destinations SET daily_quota=? WHERE id=(SELECT MIN(id) FROM destinations)', (orig_quota,))
             conn.commit(); conn.close()
 
+    def test_06b_simulated_payment_on_confirm(self):
+        self.assertTrue(C.get(P + '/capabilities', headers=H).json['paymentSupported'])
+        o = offers().json['offers'][0]
+        h = hold(o).json; hid = h['holdId']
+        pay = {'payment': {'method': 'simulated', 'reference': 'PAY-' + key()[:10], 'amount': h['totalPrice']}}
+
+        def confirm(body=None, k=None):
+            return C.post(f'{P}/holds/{hid}/confirm', json=body, headers={**H, 'Idempotency-Key': k or key()})
+
+        for bad in ({'payment': {**pay['payment'], 'amount': h['totalPrice'] + 1}}, {'payment': {**pay['payment'], 'method': 'card'}},
+                    {'payment': {'method': 'simulated', 'reference': pay['payment']['reference']}}, {'extra': 1}):
+            r = confirm(bad)
+            self.assertEqual((r.status_code, r.json['code']), (400, 'INVALID_PAYMENT'))
+        self.assertEqual(C.get(f'{P}/holds/{hid}', headers=H).json['reservationState'], 'awaiting_payment')
+        k = key(); first = confirm(pay, k)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual((first.json['reservationState'], first.json['paymentState']), ('reserved', 'paid'))
+        self.assertEqual(first.json['payment']['reference'], pay['payment']['reference'])
+        self.assertTrue(first.json['payment']['paidAt']); self.assertTrue(first.json['voucher']['code'])
+        self.assertEqual(confirm(pay, k).json, first.json)
+        clash = confirm({'payment': {**pay['payment'], 'reference': 'PAY-other0001'}}, k)
+        self.assertEqual((clash.status_code, clash.json['code']), (409, 'IDEMPOTENCY_CONFLICT'))
+        self.assertEqual(confirm(None).json['payment']['reference'], pay['payment']['reference'])
+        self.assertEqual(C.get(f'{P}/holds/{hid}', headers=H).json['payment']['reference'], pay['payment']['reference'])
+
+    def test_06c_confirm_without_payment_still_paid_and_has_no_payment_object(self):
+        o = offers().json['offers'][0]
+        hid = hold(o).json['holdId']; k = key()
+        c = C.post(f'{P}/holds/{hid}/confirm', headers={**H, 'Idempotency-Key': k})
+        self.assertEqual((c.status_code, c.json['paymentState']), (200, 'paid'))
+        self.assertNotIn('payment', c.json)
+
     def test_06_confirm_release_after_confirm_and_ownership(self):
         o = self.first(); hid = hold(o).json['holdId']
         self.assertEqual(C.get(f'{P}/holds/{hid}', headers=T).status_code, 404)  # another partner cannot read it

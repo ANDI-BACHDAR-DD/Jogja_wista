@@ -166,6 +166,9 @@ def attach(api_bp, deps):
             'fulfillmentState': 'not_assigned',
             'expiresAt': iso_utc(r['expires_at']) if r['expires_at'] else None,
         }
+        if state == 'reserved' and r['payment_reference']:
+            out['payment'] = {'method': 'simulated', 'reference': r['payment_reference'],
+                              'paidAt': iso_utc(r['paid_at']) if r['paid_at'] else None}
         if state == 'reserved':
             out['fulfillmentState'] = 'ticket_issued'
             out['voucher'] = {
@@ -187,7 +190,7 @@ def attach(api_bp, deps):
             'contract': CONTRACT_VERSION, 'provider': 'wisata', 'entityTypes': ['tourist_attraction'],
             'holds': True, 'holdTtlMinutes': HOLD_TTL_MIN, 'durableStorage': durable(), 'location': 'region',
             'requiredCustomerFields': ['name', 'email'], 'optionalCustomerFields': ['phone'],
-            'maxQuantity': MAX_QTY, 'paymentSupported': False, 'paymentMode': 'simulated',
+            'maxQuantity': MAX_QTY, 'paymentSupported': True, 'paymentMode': 'simulated',
         })
 
     # ── GET /interop/offers ──────────────────────────────────────────────────
@@ -344,18 +347,52 @@ def attach(api_bp, deps):
         return partner, r, None
 
     # ── POST /interop/holds/{id}/confirm ─────────────────────────────────────
+    def parse_payment():
+        """Optional body {"payment": {"method": "simulated", "reference": ..., "amount": ...}}. None when absent."""
+        raw = request.get_data(cache=True, as_text=True) or ''
+        if not raw.strip():
+            return None, None
+        if len(raw) > 2000:
+            return None, ierr(400, 'BAD_JSON', 'Request body too large.')
+        try:
+            body = json.loads(raw)
+        except ValueError:
+            return None, ierr(400, 'BAD_JSON', 'Invalid JSON.')
+        if not isinstance(body, dict):
+            return None, ierr(400, 'BAD_JSON', 'Body must be an object.')
+        if not body:
+            return None, None
+        pay = body.get('payment')
+        if (list(body.keys()) != ['payment'] or not isinstance(pay, dict) or set(pay) != {'method', 'reference', 'amount'}
+                or pay['method'] != 'simulated' or not isinstance(pay['reference'], str)
+                or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', pay['reference'])
+                or isinstance(pay['amount'], bool) or not isinstance(pay['amount'], int) or pay['amount'] < 0):
+            return None, ierr(400, 'INVALID_PAYMENT', 'A simulated payment needs method, reference and amount.')
+        return pay, None
+
     @api_bp.post('/interop/holds/<hold_id>/confirm')
     def interop_confirm(hold_id):
         partner, r, e = guarded(hold_id)
         if e:
             return e
-        if r['status'] == 'PENDING':
+        pay, e = parse_payment()
+        if e:
+            return e
+        key = request.headers.get('Idempotency-Key', '')
+        fingerprint = hashlib.sha256(json.dumps(pay, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if r['status'] == 'PAID':
+            if r['confirm_key'] and r['confirm_key'] == key and r['confirm_fingerprint'] != fingerprint:
+                return ierr(409, 'IDEMPOTENCY_CONFLICT', 'The key was used for a different confirm body.')
+        elif r['status'] == 'PENDING':
+            if pay is not None and pay['amount'] != r['total']:
+                return ierr(400, 'INVALID_PAYMENT', 'The payment amount must equal the hold total.')
             now = now_iso()
             # The simulated payment is recorded here; the ticket is only valid once PAID.
             cur = db().execute(
-                "UPDATE bookings SET status='PAID', paid_at=?, payment_method='simulated', expires_at=NULL, updated_at=? "
+                "UPDATE bookings SET status='PAID', paid_at=?, payment_method='simulated', payment_reference=?, "
+                "confirm_key=?, confirm_fingerprint=?, expires_at=NULL, updated_at=? "
                 "WHERE code=? AND source=? AND status='PENDING' AND expires_at > ?",
-                (now, now, hold_id, 'interop:' + partner, now))
+                (now, pay['reference'] if pay else None, key or None, fingerprint, now, hold_id, 'interop:' + partner, now))
             db().commit()
             r = hold_row(partner, hold_id)
             if cur.rowcount == 0 and r['status'] != 'PAID':
