@@ -808,6 +808,17 @@ def addon_offers(code):
         return jsonify({'provider': provider, 'available': False, 'offers': []})
     return jsonify({'provider': provider, 'available': True, 'regionId': 'diy:' + d['region'], 'offers': offers})
 
+@api_bp.get('/bookings/<code>/addons')
+def booking_addons(code):
+    """Status of the add-ons of this booking (read only, from our own journal; no provider call)."""
+    import addons
+    expire_stale()
+    r = one(code)
+    if not r: return err('Booking tidak ditemukan', 404)
+    if not can_modify_booking(r): return err('Akses ditolak', 403)
+    conn = db()
+    return jsonify({'code': code, 'addons': [addons.public(x) for x in addons.list_orders(conn, code)]})
+
 @api_bp.post('/bookings/<code>/checkout')
 def checkout_basket(code):
     """One basket: ticket + optional hotel/vehicle add-ons, ONE simulated payment (no money moves)."""

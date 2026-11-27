@@ -231,6 +231,16 @@ class AddonCheckout(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertTrue(all(o['regionId'] == 'diy:kabupaten-sleman' for o in j['offers']))
 
+    def test_11b_addon_status_is_readable_after_checkout_without_provider_calls(self):
+        code = self.booking()
+        self.checkout(code)
+        n = len(self.fake.calls)
+        j = C.get(f'/api/v1/bookings/{code}/addons', headers=self.auth).get_json()
+        self.assertEqual(sorted(a['provider'] for a in j['addons']), ['hotel', 'transport'])
+        self.assertTrue(all(a['state'] == 'CONFIRMED' and a['voucher'] for a in j['addons']))
+        self.assertEqual(len(self.fake.calls), n)
+        self.assertEqual(C.get(f'/api/v1/bookings/{code}/addons').status_code in (401, 403), True)
+
     def test_12_other_users_cannot_checkout(self):
         code = self.booking()
         r = C.post(f'/api/v1/bookings/{code}/checkout', json={'payment': {'method': 'qris'}, 'addons': []})
